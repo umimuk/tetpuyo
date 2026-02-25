@@ -9,18 +9,40 @@
   body {
     display: flex; flex-direction: column; align-items: center;
     min-height: 100vh; background: #1a1a2e; font-family: sans-serif; color: #fff;
-    padding: 20px; user-select: none;
+    padding: 10px; user-select: none;
   }
   h1 { margin-bottom: 8px; font-size: 28px; letter-spacing: 2px; }
-  .info { display: flex; gap: 24px; margin-bottom: 12px; font-size: 16px; }
-  .info span { background: #16213e; padding: 4px 12px; border-radius: 4px; }
+  .info {
+    display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .info span { background: #16213e; padding: 4px 10px; border-radius: 4px; }
   canvas { display: block; border: 2px solid #333; border-radius: 4px; }
   .controls { margin-top: 12px; font-size: 13px; color: #888; text-align: center; line-height: 1.6; }
-  button {
+  button.restart {
     margin-top: 12px; padding: 10px 28px; font-size: 16px; border: none;
     border-radius: 8px; background: #e94560; color: #fff; cursor: pointer;
   }
-  button:hover { background: #ff6b81; }
+  button.restart:hover { background: #ff6b81; }
+  /* Touch controls */
+  .touch-controls { display: none; margin-top: 16px; width: 100%; }
+  .touch-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+  .touch-btn {
+    width: 58px; height: 58px; font-size: 22px; border: 1px solid #444;
+    border-radius: 10px; background: #16213e; color: #fff; cursor: pointer;
+    touch-action: manipulation;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .touch-btn:active { background: #0f3460; }
+  .touch-wide { width: 192px; font-size: 16px; }
+  @media (max-width: 600px) {
+    #touchControls {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(26,26,46,0.96); border-top: 1px solid #333;
+      padding: 8px 0 12px; z-index: 100;
+    }
+    body { padding-bottom: 160px; }
+  }
 </style>
 </head>
 <body>
@@ -32,21 +54,29 @@
   <span id="chainDisp"></span>
 </div>
 <canvas id="game"></canvas>
-<button onclick="startGame()">リスタート</button>
-<div class="controls">
+<button class="restart" onclick="startGame()">リスタート</button>
+<div class="controls" id="kbControls">
   ←→: 移動　↓: ソフトドロップ　↑/X: 右回転　Z: 左回転　Space: ハードドロップ　P: ポーズ
+</div>
+<div class="touch-controls" id="touchControls">
+  <div class="touch-row">
+    <button class="touch-btn" id="btnLeft">◀</button>
+    <button class="touch-btn" id="btnCCW">↺</button>
+    <button class="touch-btn" id="btnDown">▼</button>
+    <button class="touch-btn" id="btnCW">↻</button>
+    <button class="touch-btn" id="btnRight">▶</button>
+  </div>
+  <div class="touch-row">
+    <button class="touch-btn touch-wide" id="btnDrop">⬇ Hard Drop</button>
+  </div>
 </div>
 <script>
 // === CONSTANTS ===
 const COLS = 20;
 const ROWS = 40;
-const CELL = 20;
-const BOARD_X = 20;
-const BOARD_Y = 10;
-const PREVIEW_X = BOARD_X + COLS * CELL + 30;
-const PREVIEW_Y = BOARD_Y + 10;
-const CANVAS_W = PREVIEW_X + 130;
-const CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+
+// Layout variables — computed by computeLayout()
+let CELL, BOARD_X, BOARD_Y, PREVIEW_X, PREVIEW_Y, CANVAS_W, CANVAS_H;
 
 const COLORS = [
   null,
@@ -75,7 +105,6 @@ const PIECE_COLORS = { I:1, J:2, L:3, O:4, S:5, T:6, Z:7 };
 const PIECE_TYPES = ['I','J','L','O','S','T','Z'];
 
 // SRS wall kick data: [fromRot][toRot] = [[dx,dy], ...]
-// For pieces other than I
 const KICKS_NORMAL = {
   '0>1': [[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
   '1>0': [[0,0],[1,0],[1,1],[0,-2],[1,-2]],
@@ -86,7 +115,6 @@ const KICKS_NORMAL = {
   '3>0': [[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
   '0>3': [[0,0],[1,0],[1,-1],[0,2],[1,2]],
 };
-// For I piece
 const KICKS_I = {
   '0>1': [[0,0],[-2,0],[1,0],[-2,1],[1,-2]],
   '1>0': [[0,0],[2,0],[-1,0],[2,-1],[-1,2]],
@@ -97,8 +125,6 @@ const KICKS_I = {
   '3>0': [[0,0],[1,0],[-2,0],[1,2],[-2,-1]],
   '0>3': [[0,0],[-1,0],[2,0],[-1,-2],[2,1]],
 };
-
-const DIRS8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
 // === GAME STATE ===
 let board, currentPiece, nextType, bag;
@@ -114,39 +140,47 @@ const DAS_REPEAT = 50;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-canvas.width = CANVAS_W;
-canvas.height = CANVAS_H;
+
+// === RESPONSIVE LAYOUT ===
+function computeLayout() {
+  const screenW = window.innerWidth;
+  // Fit board (COLS cols) + preview (~6 cols) + margins within screen width
+  CELL = Math.max(10, Math.min(20, Math.floor((screenW - 30) / (COLS + 7))));
+  BOARD_X = 10;
+  BOARD_Y = 10;
+  PREVIEW_X = BOARD_X + COLS * CELL + 20;
+  PREVIEW_Y = BOARD_Y + 10;
+  CANVAS_W = PREVIEW_X + CELL * 6 + 10;
+  CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+}
 
 // === BOARD INIT ===
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-  const center = 9.5;
+
+  // U字カーブ: 両端が高く、中央が低い
+  const center = (COLS - 1) / 2; // 9.5
   const minHeight = 20;
   const maxHeight = 30;
   const exponent = 1.5;
   for (let c = 0; c < COLS; c++) {
-    // U字カーブ: 両端が高く、中央が低い
     const ratio = Math.abs(c - center) / center;
     const height = Math.round(minHeight + (maxHeight - minHeight) * Math.pow(ratio, exponent));
     const startRow = ROWS - height;
     for (let r = startRow; r < ROWS; r++) {
-      board[r][c] = 8; // グレーブロック
+      board[r][c] = 8;
     }
   }
-  // 行単位で1〜3マスの空きを作る（ブロックがある列の中からランダム選択）
+
+  // 中心から1〜3マスのランダム幅で穴を開ける（整った溝を作る）
+  const midCol = Math.floor(COLS / 2); // 10
   for (let r = 0; r < ROWS; r++) {
-    const filledCols = [];
-    for (let c = 0; c < COLS; c++) {
-      if (board[r][c] !== 0) filledCols.push(c);
-    }
-    if (filledCols.length <= 1) continue; // 空き行orほぼ空きはスキップ
-    const emptyCount = Math.min(
-      Math.floor(Math.random() * 3) + 1,
-      filledCols.length - 1 // 最低1ブロック残す
-    );
-    const shuffled = filledCols.sort(() => Math.random() - 0.5);
-    for (let i = 0; i < emptyCount; i++) {
-      board[r][shuffled[i]] = 0;
+    if (!board[r].some(v => v !== 0)) continue;
+    const halfWidth = Math.floor(Math.random() * 3) + 1; // 1〜3
+    for (let c = midCol - halfWidth; c < midCol + halfWidth; c++) {
+      if (c >= 0 && c < COLS) board[r][c] = 0;
     }
   }
 }
@@ -182,9 +216,8 @@ function spawnPiece() {
   nextType = nextFromBag();
   const rot = 0;
   const col = type === 'O' ? 9 : 8;
-  const row = type === 'I' ? -1 : -1;
+  const row = -1;
   if (collides(type, rot, row, col)) {
-    // Try row 0
     if (collides(type, rot, 0, col)) {
       gameState = 'gameover';
       return;
@@ -224,7 +257,6 @@ function rotatePiece(dir) {
   const kicks = p.type === 'I' ? KICKS_I[key] : KICKS_NORMAL[key];
   if (!kicks) return false;
   for (const [dx, dy] of kicks) {
-    // SRS: dx = col offset, dy = row offset (inverted: positive dy = up)
     const nc = p.col + dx;
     const nr = p.row - dy;
     if (!collides(p.type, newRot, nr, nc)) {
@@ -286,50 +318,15 @@ function findFullRows() {
   return full;
 }
 
-// === SUPPORT ALGORITHM (BFS from bottom) ===
-function calculateSupport() {
-  const supported = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-  const visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-  const queue = [];
-  for (let c = 0; c < COLS; c++) {
-    if (board[ROWS - 1][c] !== 0) {
-      supported[ROWS - 1][c] = true;
-      visited[ROWS - 1][c] = true;
-      queue.push([ROWS - 1, c]);
-    }
-  }
-  let head = 0;
-  while (head < queue.length) {
-    const [r, c] = queue[head++];
-    for (const [dr, dc] of DIRS8) {
-      const nr = r + dr, nc = c + dc;
-      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS
-          && !visited[nr][nc] && board[nr][nc] !== 0) {
-        supported[nr][nc] = true;
-        visited[nr][nc] = true;
-        queue.push([nr, nc]);
-      }
-    }
-  }
-  return supported;
-}
-
-// === UNSUPPORTED BLOCK FALLING ===
-function dropUnsupported(supported) {
-  let changed = false;
-  for (let c = 0; c < COLS; c++) {
-    for (let r = ROWS - 1; r >= 0; r--) {
-      if (board[r][c] !== 0 && !supported[r][c]) {
-        const color = board[r][c];
-        board[r][c] = 0;
-        let landRow = r;
-        while (landRow + 1 < ROWS && board[landRow + 1][c] === 0) landRow++;
-        board[landRow][c] = color;
-        if (landRow !== r) changed = true;
-      }
-    }
-  }
-  return changed;
+// === BOARD COLLAPSE (Tetris式: 消えた行の上にあるブロックが落下) ===
+function collapseBoard() {
+  // 完全に空でない行だけを抽出し、上部に空行を補う
+  const nonEmpty = board.filter(row => row.some(v => v !== 0));
+  const emptyCount = ROWS - nonEmpty.length;
+  board = [
+    ...Array.from({length: emptyCount}, () => Array(COLS).fill(0)),
+    ...nonEmpty,
+  ];
 }
 
 // === CHAIN REACTION LOOP ===
@@ -360,10 +357,8 @@ function chainReactionStep() {
   for (const r of fullRows) {
     for (let c = 0; c < COLS; c++) board[r][c] = 0;
   }
-  // Support + fall (tetris mode: skip gravity after line clear)
-  // const supported = calculateSupport();
-  // dropUnsupported(supported);
-  // Check for more clears after a delay
+  // Tetris式落下: 消えた行の上のブロックが下に詰まる（個別ブロック重力なし）
+  collapseBoard();
   setTimeout(chainReactionStep, 300);
 }
 
@@ -443,20 +438,22 @@ function render() {
   }
 
   // Next piece preview
+  const previewW = CELL * 6;
+  const previewH = CELL * 5;
   ctx.fillStyle = '#16213e';
-  ctx.fillRect(PREVIEW_X, PREVIEW_Y, 120, 100);
+  ctx.fillRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
-  ctx.strokeRect(PREVIEW_X, PREVIEW_Y, 120, 100);
+  ctx.strokeRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
   ctx.fillStyle = '#888';
   ctx.font = '13px sans-serif';
-  ctx.fillText('NEXT', PREVIEW_X + 40, PREVIEW_Y - 4);
+  ctx.fillText('NEXT', PREVIEW_X + (previewW - 32) / 2, PREVIEW_Y - 4);
   if (nextType) {
     const shape = SHAPES[nextType][0];
     const color = COLORS[PIECE_COLORS[nextType]];
-    const ox = PREVIEW_X + 20;
-    const oy = PREVIEW_Y + 20;
-    const sz = 20;
+    const sz = CELL;
+    const ox = PREVIEW_X + CELL;
+    const oy = PREVIEW_Y + CELL;
     for (const [dr, dc] of shape) {
       ctx.fillStyle = color;
       ctx.fillRect(ox + dc * sz + 1, oy + dr * sz + 1, sz - 2, sz - 2);
@@ -468,7 +465,7 @@ function render() {
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL);
     ctx.fillStyle = '#e94560';
-    ctx.font = 'bold 36px sans-serif';
+    ctx.font = 'bold 32px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('GAME OVER', BOARD_X + COLS * CELL / 2, BOARD_Y + ROWS * CELL / 2);
     ctx.textAlign = 'start';
@@ -479,7 +476,7 @@ function render() {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 30px sans-serif';
+    ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('PAUSE', BOARD_X + COLS * CELL / 2, BOARD_Y + ROWS * CELL / 2);
     ctx.textAlign = 'start';
@@ -524,7 +521,6 @@ document.addEventListener('keydown', (e) => {
   if (!action) return;
   e.preventDefault();
   handleAction(action);
-  // DAS: start tracking
   if (action === 'left' || action === 'right' || action === 'down') {
     dasKeys[e.key] = { action, time: performance.now(), phase: 'delay' };
   }
@@ -549,6 +545,43 @@ function processDAS(now) {
   }
 }
 
+// === TOUCH CONTROLS ===
+function setupTouchControls() {
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (isTouchDevice) {
+    document.getElementById('touchControls').style.display = 'block';
+    document.getElementById('kbControls').style.display = 'none';
+  }
+
+  const btns = [
+    { id: 'btnLeft',  action: 'left',      repeat: true  },
+    { id: 'btnRight', action: 'right',     repeat: true  },
+    { id: 'btnDown',  action: 'down',      repeat: true  },
+    { id: 'btnCW',    action: 'rotateCW',  repeat: false },
+    { id: 'btnCCW',   action: 'rotateCCW', repeat: false },
+    { id: 'btnDrop',  action: 'hardDrop',  repeat: false },
+  ];
+
+  for (const btn of btns) {
+    const el = document.getElementById(btn.id);
+    const dasKey = 'touch_' + btn.action;
+    el.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleAction(btn.action);
+      if (btn.repeat) {
+        dasKeys[dasKey] = { action: btn.action, time: performance.now(), phase: 'delay' };
+      }
+    }, { passive: false });
+    el.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      delete dasKeys[dasKey];
+    }, { passive: false });
+    el.addEventListener('touchcancel', () => {
+      delete dasKeys[dasKey];
+    });
+  }
+}
+
 // === GAME LOOP ===
 function gameLoop(timestamp) {
   const dt = timestamp - lastTime;
@@ -558,7 +591,6 @@ function gameLoop(timestamp) {
     processDAS(timestamp);
     dropTimer += dt;
 
-    // Check if piece is on ground
     const isOnGround = collides(currentPiece.type, currentPiece.rot,
                                 currentPiece.row + 1, currentPiece.col);
     if (isOnGround) {
@@ -571,7 +603,6 @@ function gameLoop(timestamp) {
     } else {
       onGround = false;
       lockDelay = 0;
-      // Gravity
       if (dropTimer >= dropInterval) {
         dropTimer -= dropInterval;
         movePiece(1, 0);
@@ -605,6 +636,14 @@ function startGame() {
   lastTime = performance.now();
 }
 
+// === INIT ===
+computeLayout();
+setupTouchControls();
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(computeLayout, 100);
+});
 startGame();
 requestAnimationFrame(gameLoop);
 </script>
