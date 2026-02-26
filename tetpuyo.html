@@ -17,15 +17,19 @@
     flex-wrap: wrap; justify-content: center;
   }
   .info span { background: #16213e; padding: 4px 10px; border-radius: 4px; }
-  canvas { display: block; border: 2px solid #333; border-radius: 4px; }
+  canvas#game { display: block; border: 2px solid #333; border-radius: 4px; }
   .controls { margin-top: 12px; font-size: 13px; color: #888; text-align: center; line-height: 1.6; }
   button.restart {
     margin-top: 12px; padding: 10px 28px; font-size: 16px; border: none;
     border-radius: 8px; background: #e94560; color: #fff; cursor: pointer;
   }
   button.restart:hover { background: #ff6b81; }
-  /* Touch controls */
-  .touch-controls { display: none; margin-top: 16px; width: 100%; }
+
+  /* Mobile NEXT box: hidden on desktop */
+  #nextMobile { display: none; }
+
+  /* Touch controls: hidden by default, shown by JS on touch devices */
+  .touch-controls { display: none; width: 100%; }
   .touch-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
   .touch-btn {
     width: 58px; height: 58px; font-size: 22px; border: 1px solid #444;
@@ -35,7 +39,27 @@
   }
   .touch-btn:active { background: #0f3460; }
   .touch-wide { width: 192px; font-size: 16px; }
-  @media (max-width: 600px) {
+
+  /* ===== MOBILE LAYOUT ===== */
+  @media (max-width: 768px) {
+    /* Reorder flex children:
+       h1 → nextMobile (NEXT box) → info (score row) → restart button → canvas */
+    h1          { order: 0; }
+    #nextMobile { order: 1; }
+    .info       { order: 2; margin-bottom: 8px; }
+    #restartBtn { order: 3; margin-top: 8px; margin-bottom: 12px; }
+    canvas#game { order: 4; }
+    #kbControls { order: 5; display: none; }
+
+    /* Show NEXT box */
+    #nextMobile {
+      display: flex; flex-direction: column; align-items: center;
+      background: #16213e; border-radius: 8px; padding: 8px 16px;
+      margin-bottom: 8px;
+    }
+    #nextMobile .next-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+
+    /* Touch controls pinned to bottom */
     #touchControls {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: rgba(26,26,46,0.96); border-top: 1px solid #333;
@@ -53,8 +77,13 @@
   <span id="linesDisp">ライン: 0</span>
   <span id="chainDisp"></span>
 </div>
+<!-- NEXT piece preview for mobile (reordered above score row by CSS) -->
+<div id="nextMobile">
+  <div class="next-label">NEXT</div>
+  <canvas id="nextCanvas" width="80" height="60"></canvas>
+</div>
 <canvas id="game"></canvas>
-<button class="restart" onclick="startGame()">リスタート</button>
+<button class="restart" id="restartBtn" onclick="startGame()">リスタート</button>
 <div class="controls" id="kbControls">
   ←→: 移動　↓: ソフトドロップ　↑/X: 右回転　Z: 左回転　Space: ハードドロップ　P: ポーズ
 </div>
@@ -74,9 +103,11 @@
 // === CONSTANTS ===
 const COLS = 20;
 const ROWS = 40;
+const MOBILE_BREAKPOINT = 768;
 
 // Layout variables — computed by computeLayout()
 let CELL, BOARD_X, BOARD_Y, PREVIEW_X, PREVIEW_Y, CANVAS_W, CANVAS_H;
+let isMobileLayout = false;
 
 const COLORS = [
   null,
@@ -140,18 +171,33 @@ const DAS_REPEAT = 50;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('nextCanvas');
+const nextCtx = nextCanvas ? nextCanvas.getContext('2d') : null;
 
 // === RESPONSIVE LAYOUT ===
 function computeLayout() {
   const screenW = window.innerWidth;
-  // Fit board (COLS cols) + preview (~6 cols) + margins within screen width
-  CELL = Math.max(10, Math.min(20, Math.floor((screenW - 30) / (COLS + 7))));
-  BOARD_X = 10;
-  BOARD_Y = 10;
-  PREVIEW_X = BOARD_X + COLS * CELL + 20;
-  PREVIEW_Y = BOARD_Y + 10;
-  CANVAS_W = PREVIEW_X + CELL * 6 + 10;
-  CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+  isMobileLayout = screenW <= MOBILE_BREAKPOINT;
+
+  if (isMobileLayout) {
+    // Mobile: canvas is full-width board only (no in-canvas NEXT panel)
+    CELL = Math.max(10, Math.min(20, Math.floor((screenW - 20) / COLS)));
+    BOARD_X = 10;
+    BOARD_Y = 10;
+    PREVIEW_X = -9999; // sentinel: don't render sidebar in canvas
+    PREVIEW_Y = 0;
+    CANVAS_W = BOARD_X + COLS * CELL + 10;
+    CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+  } else {
+    // Desktop: board + NEXT sidebar in one canvas
+    CELL = Math.max(10, Math.min(20, Math.floor((screenW - 30) / (COLS + 7))));
+    BOARD_X = 10;
+    BOARD_Y = 10;
+    PREVIEW_X = BOARD_X + COLS * CELL + 20;
+    PREVIEW_Y = BOARD_Y + 10;
+    CANVAS_W = PREVIEW_X + CELL * 6 + 10;
+    CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+  }
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
 }
@@ -174,12 +220,15 @@ function initBoard() {
     }
   }
 
-  // 中心から1〜3マスのランダム幅で穴を開ける（整った溝を作る）
+  // 中心に1〜2マスの狭い穴を開ける
+  // holeWidth=1 → col 10 のみ（1マス）
+  // holeWidth=2 → col 9〜10（2マス、中央対称）
   const midCol = Math.floor(COLS / 2); // 10
   for (let r = 0; r < ROWS; r++) {
     if (!board[r].some(v => v !== 0)) continue;
-    const halfWidth = Math.floor(Math.random() * 3) + 1; // 1〜3
-    for (let c = midCol - halfWidth; c < midCol + halfWidth; c++) {
+    const holeWidth = Math.floor(Math.random() * 2) + 1; // 1 or 2
+    const holeStart = midCol - Math.floor(holeWidth / 2);
+    for (let c = holeStart; c < holeStart + holeWidth; c++) {
       if (c >= 0 && c < COLS) board[r][c] = 0;
     }
   }
@@ -320,7 +369,6 @@ function findFullRows() {
 
 // === BOARD COLLAPSE (Tetris式: 消えた行の上にあるブロックが落下) ===
 function collapseBoard() {
-  // 完全に空でない行だけを抽出し、上部に空行を補う
   const nonEmpty = board.filter(row => row.some(v => v !== 0));
   const emptyCount = ROWS - nonEmpty.length;
   board = [
@@ -357,7 +405,7 @@ function chainReactionStep() {
   for (const r of fullRows) {
     for (let c = 0; c < COLS; c++) board[r][c] = 0;
   }
-  // Tetris式落下: 消えた行の上のブロックが下に詰まる（個別ブロック重力なし）
+  // Tetris式落下: 消えた行の上のブロックが下に詰まる
   collapseBoard();
   setTimeout(chainReactionStep, 300);
 }
@@ -379,6 +427,32 @@ function drawBlock(x, y, color) {
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.fillRect(x + 1, y + CELL - 4, CELL - 2, 3);
   ctx.fillRect(x + CELL - 4, y + 1, 3, CELL - 2);
+}
+
+// Draw next piece in the mobile HTML canvas (#nextCanvas)
+function drawMobileNext() {
+  if (!isMobileLayout || !nextCtx || !nextType) return;
+  const nw = nextCanvas.width, nh = nextCanvas.height;
+  nextCtx.clearRect(0, 0, nw, nh);
+  nextCtx.fillStyle = '#16213e';
+  nextCtx.fillRect(0, 0, nw, nh);
+
+  const sz = 16;
+  const shape = SHAPES[nextType][0];
+  const color = COLORS[PIECE_COLORS[nextType]];
+  const drs = shape.map(([dr]) => dr);
+  const dcs = shape.map(([, dc]) => dc);
+  const minR = Math.min(...drs), maxR = Math.max(...drs);
+  const minC = Math.min(...dcs), maxC = Math.max(...dcs);
+  const pw = (maxC - minC + 1) * sz;
+  const ph = (maxR - minR + 1) * sz;
+  const ox = Math.floor((nw - pw) / 2) - minC * sz;
+  const oy = Math.floor((nh - ph) / 2) - minR * sz;
+
+  for (const [dr, dc] of shape) {
+    nextCtx.fillStyle = color;
+    nextCtx.fillRect(ox + dc * sz + 1, oy + dr * sz + 1, sz - 2, sz - 2);
+  }
 }
 
 function render() {
@@ -437,26 +511,28 @@ function render() {
     }
   }
 
-  // Next piece preview
-  const previewW = CELL * 6;
-  const previewH = CELL * 5;
-  ctx.fillStyle = '#16213e';
-  ctx.fillRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
-  ctx.fillStyle = '#888';
-  ctx.font = '13px sans-serif';
-  ctx.fillText('NEXT', PREVIEW_X + (previewW - 32) / 2, PREVIEW_Y - 4);
-  if (nextType) {
-    const shape = SHAPES[nextType][0];
-    const color = COLORS[PIECE_COLORS[nextType]];
-    const sz = CELL;
-    const ox = PREVIEW_X + CELL;
-    const oy = PREVIEW_Y + CELL;
-    for (const [dr, dc] of shape) {
-      ctx.fillStyle = color;
-      ctx.fillRect(ox + dc * sz + 1, oy + dr * sz + 1, sz - 2, sz - 2);
+  // Next piece preview — desktop only (on mobile it's drawn in #nextCanvas)
+  if (!isMobileLayout) {
+    const previewW = CELL * 6;
+    const previewH = CELL * 5;
+    ctx.fillStyle = '#16213e';
+    ctx.fillRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
+    ctx.fillStyle = '#888';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('NEXT', PREVIEW_X + (previewW - 32) / 2, PREVIEW_Y - 4);
+    if (nextType) {
+      const shape = SHAPES[nextType][0];
+      const color = COLORS[PIECE_COLORS[nextType]];
+      const sz = CELL;
+      const ox = PREVIEW_X + CELL;
+      const oy = PREVIEW_Y + CELL;
+      for (const [dr, dc] of shape) {
+        ctx.fillStyle = color;
+        ctx.fillRect(ox + dc * sz + 1, oy + dr * sz + 1, sz - 2, sz - 2);
+      }
     }
   }
 
@@ -481,6 +557,9 @@ function render() {
     ctx.fillText('PAUSE', BOARD_X + COLS * CELL / 2, BOARD_Y + ROWS * CELL / 2);
     ctx.textAlign = 'start';
   }
+
+  // Mobile: draw next piece in the HTML canvas
+  drawMobileNext();
 }
 
 // === INPUT ===
