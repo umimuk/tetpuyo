@@ -177,11 +177,19 @@ const nextCtx = nextCanvas ? nextCanvas.getContext('2d') : null;
 // === RESPONSIVE LAYOUT ===
 function computeLayout() {
   const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
   isMobileLayout = screenW <= MOBILE_BREAKPOINT;
 
   if (isMobileLayout) {
     // Mobile: canvas is full-width board only (no in-canvas NEXT panel)
-    CELL = Math.max(10, Math.min(20, Math.floor((screenW - 20) / COLS)));
+    // 高さ制約: UI上部（タイトル/NEXT/スコア/ボタン）+ タッチコントロール分を除く
+    const topUI = 240;  // h1 + nextMobile + info + restartBtn + padding
+    const bottomUI = 165; // position:fixed タッチコントロール
+    const availH = Math.max(180, screenH - topUI - bottomUI);
+
+    const cellFromW = Math.floor((screenW - 20) / COLS);
+    const cellFromH = Math.floor(availH / ROWS);
+    CELL = Math.max(8, Math.min(20, Math.min(cellFromW, cellFromH)));
     BOARD_X = 10;
     BOARD_Y = 10;
     PREVIEW_X = -9999; // sentinel: don't render sidebar in canvas
@@ -206,28 +214,31 @@ function computeLayout() {
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
-  // U字カーブ: 両端が高く、中央が低い
+  // U字カーブ: 各列の高さに ±1〜5 のランダムノイズを加えて境界を歪める
   const center = (COLS - 1) / 2; // 9.5
-  const minHeight = 20;
+  const minHeight = 18;
   const maxHeight = 30;
   const exponent = 1.5;
   for (let c = 0; c < COLS; c++) {
     const ratio = Math.abs(c - center) / center;
-    const height = Math.round(minHeight + (maxHeight - minHeight) * Math.pow(ratio, exponent));
+    const base = Math.round(minHeight + (maxHeight - minHeight) * Math.pow(ratio, exponent));
+    const noise = Math.round(Math.random() * 10 - 5); // ±5 ランダム歪み
+    const height = Math.max(minHeight - 3, Math.min(maxHeight + 5, base + noise));
     const startRow = ROWS - height;
-    for (let r = startRow; r < ROWS; r++) {
+    for (let r = Math.max(0, startRow); r < ROWS; r++) {
       board[r][c] = 8;
     }
   }
 
-  // 中心に1〜2マスの狭い穴を開ける
-  // holeWidth=1 → col 10 のみ（1マス）
-  // holeWidth=2 → col 9〜10（2マス、中央対称）
-  const midCol = Math.floor(COLS / 2); // 10
+  // 中央に蛇行する穴を開ける（幅2〜4マス、左右に±2ずつドリフト）
+  let holeCenter = Math.floor(COLS / 2);
   for (let r = 0; r < ROWS; r++) {
     if (!board[r].some(v => v !== 0)) continue;
-    const holeWidth = Math.floor(Math.random() * 2) + 1; // 1 or 2
-    const holeStart = midCol - Math.floor(holeWidth / 2);
+    // ホール中心を左右にランダムドリフト（両端3マスは守る）
+    holeCenter = Math.max(3, Math.min(COLS - 4,
+      holeCenter + Math.round(Math.random() * 4 - 2)));
+    const holeWidth = Math.floor(Math.random() * 3) + 2; // 2〜4マス
+    const holeStart = holeCenter - Math.floor(holeWidth / 2);
     for (let c = holeStart; c < holeStart + holeWidth; c++) {
       if (c >= 0 && c < COLS) board[r][c] = 0;
     }
