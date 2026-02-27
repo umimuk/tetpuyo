@@ -65,7 +65,12 @@
       background: rgba(26,26,46,0.96); border-top: 1px solid #333;
       padding: 8px 0 12px; z-index: 100;
     }
-    body { padding-bottom: 160px; }
+    body {
+      padding-bottom: 160px;
+      /* 100vh がアドレスバー分大きくスクロール発生するのを防ぐ */
+      min-height: 0;
+      overflow: hidden;
+    }
   }
 </style>
 </head>
@@ -182,13 +187,14 @@ function computeLayout() {
 
   if (isMobileLayout) {
     // Mobile: canvas is full-width board only (no in-canvas NEXT panel)
-    // 高さ制約: UI上部（タイトル/NEXT/スコア/ボタン）+ タッチコントロール分を除く
-    const topUI = 240;  // h1 + nextMobile + info + restartBtn + padding
-    const bottomUI = 165; // position:fixed タッチコントロール
-    const availH = Math.max(180, screenH - topUI - bottomUI);
+    // 非キャンバス領域の合計: body-pad(10+160) + h1(44) + nextMobile(102) + info(36) + btn(60) = 412px
+    // + 安全マージン 20px = 432px を予約
+    const reserved = 432;
+    const maxCanvasH = Math.max(200, screenH - reserved);
 
     const cellFromW = Math.floor((screenW - 20) / COLS);
-    const cellFromH = Math.floor(availH / ROWS);
+    // (maxCanvasH - 20) はキャンバスの BOARD_Y+10 分を除いたピクセル
+    const cellFromH = Math.floor((maxCanvasH - 20) / ROWS);
     CELL = Math.max(8, Math.min(20, Math.min(cellFromW, cellFromH)));
     BOARD_X = 10;
     BOARD_Y = 10;
@@ -214,7 +220,7 @@ function computeLayout() {
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
-  // U字カーブ: 各列の高さに ±1〜5 のランダムノイズを加えて境界を歪める
+  // Step1: U字カーブ + 各列 ±5 ノイズで上端をギザギザに
   const center = (COLS - 1) / 2; // 9.5
   const minHeight = 18;
   const maxHeight = 30;
@@ -230,17 +236,52 @@ function initBoard() {
     }
   }
 
-  // 中央に蛇行する穴を開ける（幅2〜4マス、左右に±2ずつドリフト）
+  // Step2: 完全に埋まった行（底部）に蛇行する穴を開ける
   let holeCenter = Math.floor(COLS / 2);
   for (let r = 0; r < ROWS; r++) {
-    if (!board[r].some(v => v !== 0)) continue;
-    // ホール中心を左右にランダムドリフト（両端3マスは守る）
-    holeCenter = Math.max(3, Math.min(COLS - 4,
+    if (!board[r].every(v => v !== 0)) continue; // 完全に埋まった行のみ
+    holeCenter = Math.max(4, Math.min(COLS - 5,
       holeCenter + Math.round(Math.random() * 4 - 2)));
-    const holeWidth = Math.floor(Math.random() * 3) + 2; // 2〜4マス
+    const holeWidth = Math.floor(Math.random() * 3) + 3; // 3〜5マス
     const holeStart = holeCenter - Math.floor(holeWidth / 2);
     for (let c = holeStart; c < holeStart + holeWidth; c++) {
       if (c >= 0 && c < COLS) board[r][c] = 0;
+    }
+  }
+
+  // Step3: 壁の内側エッジに水平出っ張りを追加して迷路状に
+  for (let r = 5; r < ROWS - 3; r++) {
+    // 左壁の内側エッジ: 左から走査して最初の空きマスの一つ左
+    let leftFilled = -1;
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] === 0) { leftFilled = c - 1; break; }
+    }
+    // 右壁の内側エッジ: 右から走査して最初の空きマスの一つ右
+    let rightFilled = COLS;
+    for (let c = COLS - 1; c >= 0; c--) {
+      if (board[r][c] === 0) { rightFilled = c + 1; break; }
+    }
+    if (leftFilled < 0 || rightFilled >= COLS) continue; // 壁なし
+    const emptyWidth = rightFilled - leftFilled - 1;
+    if (emptyWidth < 5) continue; // 狭すぎる行はスキップ
+
+    const maxBump = Math.min(5, Math.floor(emptyWidth / 3));
+
+    // 左壁から右へ出っ張り（40%の確率）
+    if (Math.random() < 0.40) {
+      const bump = Math.floor(Math.random() * maxBump) + 1;
+      for (let i = 1; i <= bump; i++) {
+        const c = leftFilled + i;
+        if (c < rightFilled - 1) board[r][c] = 8;
+      }
+    }
+    // 右壁から左へ出っ張り（40%の確率）
+    if (Math.random() < 0.40) {
+      const bump = Math.floor(Math.random() * maxBump) + 1;
+      for (let i = 1; i <= bump; i++) {
+        const c = rightFilled - i;
+        if (c > leftFilled + 1) board[r][c] = 8;
+      }
     }
   }
 }
