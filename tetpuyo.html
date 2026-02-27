@@ -8,27 +8,40 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     display: flex; flex-direction: column; align-items: center;
-    min-height: 100vh; background: #1a1a2e; font-family: sans-serif; color: #fff;
-    padding: 10px; user-select: none;
+    background: #1a1a2e; font-family: sans-serif; color: #fff;
+    padding: 8px; user-select: none;
   }
-  h1 { margin-bottom: 8px; font-size: 28px; letter-spacing: 2px; }
-  .info {
-    display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px;
-    flex-wrap: wrap; justify-content: center;
+  h1 { margin-bottom: 6px; font-size: 22px; letter-spacing: 2px; }
+
+  /* ゲームラッパー: 盤面(左) + サイドバー(右) */
+  .game-wrapper {
+    display: flex; flex-direction: row; gap: 8px; align-items: flex-start;
   }
-  .info span { background: #16213e; padding: 4px 10px; border-radius: 4px; }
   canvas#game { display: block; border: 2px solid #333; border-radius: 4px; }
-  .controls { margin-top: 12px; font-size: 13px; color: #888; text-align: center; line-height: 1.6; }
+
+  /* 右サイドバー */
+  .sidebar {
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    background: #16213e; border-radius: 8px; padding: 8px 6px;
+    width: 110px; flex-shrink: 0;
+  }
+  .next-box { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .lbl { font-size: 11px; color: #888; margin-bottom: 2px; text-align: center; }
+  .stat-box {
+    display: flex; flex-direction: column; align-items: center;
+    background: #1a1a3e; border-radius: 4px; padding: 4px 6px; width: 100%;
+  }
+  .stat-box .val { font-size: 15px; font-weight: bold; }
+  #chainDisp { font-size: 13px; color: #ffea00; text-align: center; min-height: 18px; }
   button.restart {
-    margin-top: 12px; padding: 10px 28px; font-size: 16px; border: none;
-    border-radius: 8px; background: #e94560; color: #fff; cursor: pointer;
+    padding: 8px 4px; font-size: 13px; border: none;
+    border-radius: 6px; background: #e94560; color: #fff; cursor: pointer; width: 100%;
   }
   button.restart:hover { background: #ff6b81; }
 
-  /* Mobile NEXT box: hidden on desktop */
-  #nextMobile { display: none; }
+  .controls { margin-top: 8px; font-size: 12px; color: #888; text-align: center; line-height: 1.6; }
 
-  /* Touch controls: hidden by default, shown by JS on touch devices */
+  /* Touch controls */
   .touch-controls { display: none; width: 100%; }
   .touch-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
   .touch-btn {
@@ -40,55 +53,39 @@
   .touch-btn:active { background: #0f3460; }
   .touch-wide { width: 192px; font-size: 16px; }
 
-  /* ===== MOBILE LAYOUT ===== */
+  /* ===== MOBILE ===== */
   @media (max-width: 768px) {
-    /* Reorder flex children:
-       h1 → nextMobile (NEXT box) → info (score row) → restart button → canvas */
-    h1          { order: 0; }
-    #nextMobile { order: 1; }
-    .info       { order: 2; margin-bottom: 8px; }
-    #restartBtn { order: 3; margin-top: 8px; margin-bottom: 12px; }
-    canvas#game { order: 4; }
-    #kbControls { order: 5; display: none; }
+    h1 { font-size: 16px; margin-bottom: 4px; }
+    .sidebar { width: 86px; padding: 6px 4px; gap: 4px; }
+    .stat-box .val { font-size: 13px; }
+    button.restart { font-size: 12px; padding: 6px 4px; }
 
-    /* Show NEXT box */
-    #nextMobile {
-      display: flex; flex-direction: column; align-items: center;
-      background: #16213e; border-radius: 8px; padding: 8px 16px;
-      margin-bottom: 8px;
-    }
-    #nextMobile .next-label { font-size: 12px; color: #888; margin-bottom: 4px; }
-
-    /* Touch controls pinned to bottom */
     #touchControls {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: rgba(26,26,46,0.96); border-top: 1px solid #333;
       padding: 8px 0 12px; z-index: 100;
     }
-    body {
-      padding-bottom: 160px;
-      /* 100vh がアドレスバー分大きくスクロール発生するのを防ぐ */
-      min-height: 0;
-      overflow: hidden;
-    }
+    body { padding-bottom: 150px; min-height: 0; overflow: hidden; }
+    #kbControls { display: none; }
   }
 </style>
 </head>
 <body>
 <h1>TetPuyo</h1>
-<div class="info">
-  <span id="scoreDisp">スコア: 0</span>
-  <span id="levelDisp">Lv: 1</span>
-  <span id="linesDisp">ライン: 0</span>
-  <span id="chainDisp"></span>
+<div class="game-wrapper">
+  <canvas id="game"></canvas>
+  <aside class="sidebar">
+    <div class="next-box">
+      <div class="lbl">NEXT</div>
+      <canvas id="nextCanvas" width="72" height="60"></canvas>
+    </div>
+    <div class="stat-box"><div class="lbl">スコア</div><div class="val" id="scoreDisp">0</div></div>
+    <div class="stat-box"><div class="lbl">Lv</div><div class="val" id="levelDisp">1</div></div>
+    <div class="stat-box"><div class="lbl">ライン</div><div class="val" id="linesDisp">0</div></div>
+    <div id="chainDisp"></div>
+    <button class="restart" id="restartBtn" onclick="startGame()">再スタート</button>
+  </aside>
 </div>
-<!-- NEXT piece preview for mobile (reordered above score row by CSS) -->
-<div id="nextMobile">
-  <div class="next-label">NEXT</div>
-  <canvas id="nextCanvas" width="80" height="60"></canvas>
-</div>
-<canvas id="game"></canvas>
-<button class="restart" id="restartBtn" onclick="startGame()">リスタート</button>
 <div class="controls" id="kbControls">
   ←→: 移動　↓: ソフトドロップ　↑/X: 右回転　Z: 左回転　Space: ハードドロップ　P: ポーズ
 </div>
@@ -111,7 +108,7 @@ const ROWS = 40;
 const MOBILE_BREAKPOINT = 768;
 
 // Layout variables — computed by computeLayout()
-let CELL, BOARD_X, BOARD_Y, PREVIEW_X, PREVIEW_Y, CANVAS_W, CANVAS_H;
+let CELL, BOARD_X, BOARD_Y, CANVAS_W, CANVAS_H;
 let isMobileLayout = false;
 
 const COLORS = [
@@ -140,7 +137,7 @@ const SHAPES = {
 const PIECE_COLORS = { I:1, J:2, L:3, O:4, S:5, T:6, Z:7 };
 const PIECE_TYPES = ['I','J','L','O','S','T','Z'];
 
-// SRS wall kick data: [fromRot][toRot] = [[dx,dy], ...]
+// SRS wall kick data
 const KICKS_NORMAL = {
   '0>1': [[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
   '1>0': [[0,0],[1,0],[1,1],[0,-2],[1,-2]],
@@ -165,7 +162,7 @@ const KICKS_I = {
 // === GAME STATE ===
 let board, currentPiece, nextType, bag;
 let score, level, totalLines, chainCount;
-let gameState; // 'playing' | 'clearing' | 'paused' | 'gameover'
+let gameState;
 let dropTimer, dropInterval, lockDelay, lockResets, onGround;
 let lastTime;
 
@@ -185,33 +182,26 @@ function computeLayout() {
   const screenH = window.innerHeight;
   isMobileLayout = screenW <= MOBILE_BREAKPOINT;
 
-  if (isMobileLayout) {
-    // Mobile: canvas is full-width board only (no in-canvas NEXT panel)
-    // 非キャンバス領域の合計: body-pad(10+160) + h1(44) + nextMobile(102) + info(36) + btn(60) = 412px
-    // + 安全マージン 20px = 432px を予約
-    const reserved = 432;
-    const maxCanvasH = Math.max(200, screenH - reserved);
+  // 右サイドバー幅 (CSS と合わせる)
+  const SIDEBAR_W = isMobileLayout ? 86 : 110;
+  const GAP = 8;   // sidebar との gap
+  const HPAD = 8;  // body 左右パディング
+  const H1_H = isMobileLayout ? 26 : 34;  // h1 + margin
+  const TOUCH_H = isMobileLayout ? 150 : 0; // タッチコントロール確保
+  const VPAD = 8;  // body 上下パディング
 
-    const cellFromW = Math.floor((screenW - 20) / COLS);
-    // (maxCanvasH - 20) はキャンバスの BOARD_Y+10 分を除いたピクセル
-    const cellFromH = Math.floor((maxCanvasH - 20) / ROWS);
-    CELL = Math.max(8, Math.min(20, Math.min(cellFromW, cellFromH)));
-    BOARD_X = 10;
-    BOARD_Y = 10;
-    PREVIEW_X = -9999; // sentinel: don't render sidebar in canvas
-    PREVIEW_Y = 0;
-    CANVAS_W = BOARD_X + COLS * CELL + 10;
-    CANVAS_H = BOARD_Y + ROWS * CELL + 10;
-  } else {
-    // Desktop: board + NEXT sidebar in one canvas
-    CELL = Math.max(10, Math.min(20, Math.floor((screenW - 30) / (COLS + 7))));
-    BOARD_X = 10;
-    BOARD_Y = 10;
-    PREVIEW_X = BOARD_X + COLS * CELL + 20;
-    PREVIEW_Y = BOARD_Y + 10;
-    CANVAS_W = PREVIEW_X + CELL * 6 + 10;
-    CANVAS_H = BOARD_Y + ROWS * CELL + 10;
-  }
+  const availW = screenW - SIDEBAR_W - GAP - HPAD * 2;
+  const availH = screenH - H1_H - VPAD * 2 - TOUCH_H;
+
+  const cellFromW = Math.floor(availW / COLS);
+  const cellFromH = Math.floor((availH - 20) / ROWS);
+  CELL = Math.max(8, Math.min(20, Math.min(cellFromW, cellFromH)));
+
+  BOARD_X = 10;
+  BOARD_Y = 10;
+  CANVAS_W = BOARD_X + COLS * CELL + 10;
+  CANVAS_H = BOARD_Y + ROWS * CELL + 10;
+
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
 }
@@ -221,14 +211,14 @@ function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
   // Step1: U字カーブ + 各列 ±5 ノイズで上端をギザギザに
-  const center = (COLS - 1) / 2; // 9.5
+  const center = (COLS - 1) / 2;
   const minHeight = 18;
   const maxHeight = 30;
   const exponent = 1.5;
   for (let c = 0; c < COLS; c++) {
     const ratio = Math.abs(c - center) / center;
     const base = Math.round(minHeight + (maxHeight - minHeight) * Math.pow(ratio, exponent));
-    const noise = Math.round(Math.random() * 10 - 5); // ±5 ランダム歪み
+    const noise = Math.round(Math.random() * 10 - 5);
     const height = Math.max(minHeight - 3, Math.min(maxHeight + 5, base + noise));
     const startRow = ROWS - height;
     for (let r = Math.max(0, startRow); r < ROWS; r++) {
@@ -236,38 +226,30 @@ function initBoard() {
     }
   }
 
-  // Step2: 完全に埋まった行（底部）に蛇行する穴を開ける
+  // Step2: 完全に埋まった行（底部）に 1マスの蛇行穴を開ける（±1 ドリフト）
   let holeCenter = Math.floor(COLS / 2);
   for (let r = 0; r < ROWS; r++) {
-    if (!board[r].every(v => v !== 0)) continue; // 完全に埋まった行のみ
-    holeCenter = Math.max(4, Math.min(COLS - 5,
-      holeCenter + Math.round(Math.random() * 4 - 2)));
-    const holeWidth = Math.floor(Math.random() * 3) + 3; // 3〜5マス
-    const holeStart = holeCenter - Math.floor(holeWidth / 2);
-    for (let c = holeStart; c < holeStart + holeWidth; c++) {
-      if (c >= 0 && c < COLS) board[r][c] = 0;
-    }
+    if (!board[r].every(v => v !== 0)) continue;
+    holeCenter = Math.max(2, Math.min(COLS - 3,
+      holeCenter + Math.round(Math.random() * 2 - 1)));
+    board[r][holeCenter] = 0; // 1マスだけ空ける
   }
 
-  // Step3: 壁の内側エッジに水平出っ張りを追加して迷路状に
+  // Step3: 遷移ゾーンの壁内側に水平出っ張りを追加（迷路状テクスチャ）
   for (let r = 5; r < ROWS - 3; r++) {
-    // 左壁の内側エッジ: 左から走査して最初の空きマスの一つ左
     let leftFilled = -1;
     for (let c = 0; c < COLS; c++) {
       if (board[r][c] === 0) { leftFilled = c - 1; break; }
     }
-    // 右壁の内側エッジ: 右から走査して最初の空きマスの一つ右
     let rightFilled = COLS;
     for (let c = COLS - 1; c >= 0; c--) {
       if (board[r][c] === 0) { rightFilled = c + 1; break; }
     }
-    if (leftFilled < 0 || rightFilled >= COLS) continue; // 壁なし
+    if (leftFilled < 0 || rightFilled >= COLS) continue;
     const emptyWidth = rightFilled - leftFilled - 1;
-    if (emptyWidth < 5) continue; // 狭すぎる行はスキップ
+    if (emptyWidth < 5) continue;
 
     const maxBump = Math.min(5, Math.floor(emptyWidth / 3));
-
-    // 左壁から右へ出っ張り（40%の確率）
     if (Math.random() < 0.40) {
       const bump = Math.floor(Math.random() * maxBump) + 1;
       for (let i = 1; i <= bump; i++) {
@@ -275,7 +257,6 @@ function initBoard() {
         if (c < rightFilled - 1) board[r][c] = 8;
       }
     }
-    // 右壁から左へ出っ張り（40%の確率）
     if (Math.random() < 0.40) {
       const bump = Math.floor(Math.random() * maxBump) + 1;
       for (let i = 1; i <= bump; i++) {
@@ -419,7 +400,6 @@ function findFullRows() {
   return full;
 }
 
-// === BOARD COLLAPSE (Tetris式: 消えた行の上にあるブロックが落下) ===
 function collapseBoard() {
   const nonEmpty = board.filter(row => row.some(v => v !== 0));
   const emptyCount = ROWS - nonEmpty.length;
@@ -453,20 +433,18 @@ function chainReactionStep() {
   if (chainCount > 1) {
     document.getElementById('chainDisp').textContent = chainCount + '連鎖!';
   }
-  // Clear rows
   for (const r of fullRows) {
     for (let c = 0; c < COLS; c++) board[r][c] = 0;
   }
-  // Tetris式落下: 消えた行の上のブロックが下に詰まる
   collapseBoard();
   setTimeout(chainReactionStep, 300);
 }
 
 // === SCORING & UI ===
 function updateUI() {
-  document.getElementById('scoreDisp').textContent = 'スコア: ' + score;
-  document.getElementById('levelDisp').textContent = 'Lv: ' + level;
-  document.getElementById('linesDisp').textContent = 'ライン: ' + totalLines;
+  document.getElementById('scoreDisp').textContent = score;
+  document.getElementById('levelDisp').textContent = level;
+  document.getElementById('linesDisp').textContent = totalLines;
 }
 
 // === RENDERING ===
@@ -481,15 +459,15 @@ function drawBlock(x, y, color) {
   ctx.fillRect(x + CELL - 4, y + 1, 3, CELL - 2);
 }
 
-// Draw next piece in the mobile HTML canvas (#nextCanvas)
-function drawMobileNext() {
-  if (!isMobileLayout || !nextCtx || !nextType) return;
+// NEXT ピースをサイドバー canvas に描画（PC・スマホ共通）
+function drawSidebarNext() {
+  if (!nextCtx || !nextType) return;
   const nw = nextCanvas.width, nh = nextCanvas.height;
   nextCtx.clearRect(0, 0, nw, nh);
   nextCtx.fillStyle = '#16213e';
   nextCtx.fillRect(0, 0, nw, nh);
 
-  const sz = 16;
+  const sz = 14;
   const shape = SHAPES[nextType][0];
   const color = COLORS[PIECE_COLORS[nextType]];
   const drs = shape.map(([dr]) => dr);
@@ -545,7 +523,6 @@ function render() {
     const shape = SHAPES[p.type][p.rot];
     const color = COLORS[PIECE_COLORS[p.type]];
 
-    // Ghost
     const ghostRow = getGhostRow();
     if (ghostRow !== p.row) {
       ctx.globalAlpha = 0.25;
@@ -556,35 +533,9 @@ function render() {
       ctx.globalAlpha = 1.0;
     }
 
-    // Active
     for (const [dr, dc] of shape) {
       const r = p.row + dr, c = p.col + dc;
       if (r >= 0) drawBlock(BOARD_X + c * CELL, BOARD_Y + r * CELL, color);
-    }
-  }
-
-  // Next piece preview — desktop only (on mobile it's drawn in #nextCanvas)
-  if (!isMobileLayout) {
-    const previewW = CELL * 6;
-    const previewH = CELL * 5;
-    ctx.fillStyle = '#16213e';
-    ctx.fillRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(PREVIEW_X, PREVIEW_Y, previewW, previewH);
-    ctx.fillStyle = '#888';
-    ctx.font = '13px sans-serif';
-    ctx.fillText('NEXT', PREVIEW_X + (previewW - 32) / 2, PREVIEW_Y - 4);
-    if (nextType) {
-      const shape = SHAPES[nextType][0];
-      const color = COLORS[PIECE_COLORS[nextType]];
-      const sz = CELL;
-      const ox = PREVIEW_X + CELL;
-      const oy = PREVIEW_Y + CELL;
-      for (const [dr, dc] of shape) {
-        ctx.fillStyle = color;
-        ctx.fillRect(ox + dc * sz + 1, oy + dr * sz + 1, sz - 2, sz - 2);
-      }
     }
   }
 
@@ -610,8 +561,7 @@ function render() {
     ctx.textAlign = 'start';
   }
 
-  // Mobile: draw next piece in the HTML canvas
-  drawMobileNext();
+  drawSidebarNext();
 }
 
 // === INPUT ===
