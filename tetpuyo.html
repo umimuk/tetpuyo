@@ -210,60 +210,68 @@ function computeLayout() {
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
-  // Step1: U字カーブ + 各列 ±5 ノイズで上端をギザギザに
-  const center = (COLS - 1) / 2;
-  const minHeight = 18;
-  const maxHeight = 30;
-  const exponent = 1.5;
+  // Step1: 凹型の基本形状
+  //   両端: 25〜30行、中央: 10〜15行
+  //   exponent=0.8 で中央〜端が均一な傾斜（見本に近い）
+  const center = (COLS - 1) / 2; // 9.5
+  const minH = 12; // 中央の高さ（行数）
+  const maxH = 28; // 端の高さ（行数）
   for (let c = 0; c < COLS; c++) {
     const ratio = Math.abs(c - center) / center;
-    const base = Math.round(minHeight + (maxHeight - minHeight) * Math.pow(ratio, exponent));
-    const noise = Math.round(Math.random() * 10 - 5);
-    const height = Math.max(minHeight - 3, Math.min(maxHeight + 5, base + noise));
-    const startRow = ROWS - height;
+    const base = Math.round(minH + (maxH - minH) * Math.pow(ratio, 0.8));
+    const noise = Math.round(Math.random() * 6 - 3); // ±3 ランダム揺らぎ
+    const h = Math.max(minH - 2, Math.min(maxH + 2, base + noise));
+    const startRow = ROWS - h;
     for (let r = Math.max(0, startRow); r < ROWS; r++) {
       board[r][c] = 8;
     }
   }
 
-  // Step2: 完全に埋まった行（底部）に 1マスの蛇行穴を開ける（±1 ドリフト）
+  // Step2: 壁の内側に直方体状の出っ張りを配置（見本のようなブロック感）
+  const numBumps = 12 + Math.floor(Math.random() * 6); // 12〜17個
+  for (let i = 0; i < numBumps; i++) {
+    const r0 = 6 + Math.floor(Math.random() * (ROWS - 14));
+    // この行の左・右壁の内側エッジを検出
+    let leftEdge = -1;
+    for (let c = 0; c < COLS; c++) {
+      if (board[r0][c] === 0) { leftEdge = c - 1; break; }
+    }
+    let rightEdge = COLS;
+    for (let c = COLS - 1; c >= 0; c--) {
+      if (board[r0][c] === 0) { rightEdge = c + 1; break; }
+    }
+    if (leftEdge < 0 || rightEdge >= COLS) continue;
+    const openW = rightEdge - leftEdge - 1;
+    if (openW < 5) continue;
+
+    const bumpW = 2 + Math.floor(Math.random() * 3); // 幅 2〜4列
+    const bumpH = 3 + Math.floor(Math.random() * 5); // 高さ 3〜7行
+    if (bumpW > Math.floor(openW / 3)) continue; // 開口幅の1/3以内
+
+    if (Math.random() < 0.5) {
+      // 左壁から右へ突出
+      for (let dr = 0; dr < bumpH && r0 + dr < ROWS - 1; dr++) {
+        for (let dc = 1; dc <= bumpW; dc++) {
+          if (leftEdge + dc < rightEdge - 1) board[r0 + dr][leftEdge + dc] = 8;
+        }
+      }
+    } else {
+      // 右壁から左へ突出
+      for (let dr = 0; dr < bumpH && r0 + dr < ROWS - 1; dr++) {
+        for (let dc = 1; dc <= bumpW; dc++) {
+          if (rightEdge - dc > leftEdge + 1) board[r0 + dr][rightEdge - dc] = 8;
+        }
+      }
+    }
+  }
+
+  // Step3: 完全に埋まった行（底部）に1マスの蛇行穴を開ける
   let holeCenter = Math.floor(COLS / 2);
   for (let r = 0; r < ROWS; r++) {
     if (!board[r].every(v => v !== 0)) continue;
     holeCenter = Math.max(2, Math.min(COLS - 3,
       holeCenter + Math.round(Math.random() * 2 - 1)));
-    board[r][holeCenter] = 0; // 1マスだけ空ける
-  }
-
-  // Step3: 遷移ゾーンの壁内側に水平出っ張りを追加（迷路状テクスチャ）
-  for (let r = 5; r < ROWS - 3; r++) {
-    let leftFilled = -1;
-    for (let c = 0; c < COLS; c++) {
-      if (board[r][c] === 0) { leftFilled = c - 1; break; }
-    }
-    let rightFilled = COLS;
-    for (let c = COLS - 1; c >= 0; c--) {
-      if (board[r][c] === 0) { rightFilled = c + 1; break; }
-    }
-    if (leftFilled < 0 || rightFilled >= COLS) continue;
-    const emptyWidth = rightFilled - leftFilled - 1;
-    if (emptyWidth < 5) continue;
-
-    const maxBump = Math.min(5, Math.floor(emptyWidth / 3));
-    if (Math.random() < 0.40) {
-      const bump = Math.floor(Math.random() * maxBump) + 1;
-      for (let i = 1; i <= bump; i++) {
-        const c = leftFilled + i;
-        if (c < rightFilled - 1) board[r][c] = 8;
-      }
-    }
-    if (Math.random() < 0.40) {
-      const bump = Math.floor(Math.random() * maxBump) + 1;
-      for (let i = 1; i <= bump; i++) {
-        const c = rightFilled - i;
-        if (c > leftFilled + 1) board[r][c] = 8;
-      }
-    }
+    board[r][holeCenter] = 0;
   }
 }
 
