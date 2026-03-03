@@ -12,29 +12,24 @@
     padding: 5px 5px 0; user-select: none;
   }
 
-  /* ゲームラッパー: 盤面(左) + サイドバー(右) */
-  .game-wrapper {
-    display: flex; flex-direction: row; gap: 8px; align-items: flex-start;
+  /* 上部バー */
+  .top-bar {
+    display: flex; flex-direction: row; align-items: center;
+    justify-content: center; gap: 6px;
+    width: 100%; height: 46px; flex-shrink: 0;
   }
   canvas#game { display: block; border: 2px solid #333; border-radius: 4px; }
-
-  /* 右サイドバー */
-  .sidebar {
-    display: flex; flex-direction: column; gap: 6px; align-items: center;
-    background: #425097; border-radius: 8px; padding: 8px 6px;
-    width: 110px; flex-shrink: 0;
-  }
-  .next-box { display: flex; flex-direction: column; align-items: center; width: 100%; }
-  .lbl { font-size: 11px; color: #888; margin-bottom: 2px; text-align: center; }
+  .next-box { display: flex; flex-direction: column; align-items: center; }
+  .lbl { font-size: 11px; color: #aaa; margin-bottom: 1px; text-align: center; }
   .stat-box {
     display: flex; flex-direction: column; align-items: center;
-    background: #1a1a3e; border-radius: 4px; padding: 4px 6px; width: 100%;
+    background: #1a1a3e; border-radius: 4px; padding: 2px 5px; width: auto;
   }
-  .stat-box .val { font-size: 15px; font-weight: bold; }
-  #chainDisp { font-size: 13px; color: #ffea00; text-align: center; min-height: 18px; }
+  .stat-box .val { font-size: 14px; font-weight: bold; }
+  #chainDisp { font-size: 12px; color: #ffea00; text-align: center; }
   button.restart {
-    padding: 8px 4px; font-size: 13px; border: none;
-    border-radius: 6px; background: #e94560; color: #fff; cursor: pointer; width: 100%;
+    padding: 4px 10px; font-size: 12px; border: none;
+    border-radius: 6px; background: #e94560; color: #fff; cursor: pointer; width: auto;
   }
   button.restart:hover { background: #ff6b81; }
 
@@ -54,11 +49,6 @@
 
   /* ===== MOBILE ===== */
   @media (max-width: 768px) {
-    h1 { font-size: 16px; margin-bottom: 4px; }
-    .sidebar { width: 86px; padding: 6px 4px; gap: 4px; }
-    .stat-box .val { font-size: 13px; }
-    button.restart { font-size: 12px; padding: 6px 4px; }
-
     #touchControls {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: #425097; border-top: 1px solid #333;
@@ -70,20 +60,18 @@
 </style>
 </head>
 <body>
-<div class="game-wrapper">
-  <canvas id="game"></canvas>
-  <aside class="sidebar">
-    <div class="next-box">
-      <div class="lbl">NEXT</div>
-      <canvas id="nextCanvas" width="72" height="60"></canvas>
-    </div>
-    <div class="stat-box"><div class="lbl">スコア</div><div class="val" id="scoreDisp">0</div></div>
-    <div class="stat-box"><div class="lbl">Lv</div><div class="val" id="levelDisp">1</div></div>
-    <div class="stat-box"><div class="lbl">ライン</div><div class="val" id="linesDisp">0</div></div>
-    <div id="chainDisp"></div>
-    <button class="restart" id="restartBtn" onclick="startGame()">再スタート</button>
-  </aside>
+<div class="top-bar">
+  <div class="next-box">
+    <div class="lbl">NEXT</div>
+    <canvas id="nextCanvas" width="40" height="40"></canvas>
+  </div>
+  <div class="stat-box"><div class="lbl">スコア</div><div class="val" id="scoreDisp">0</div></div>
+  <div class="stat-box"><div class="lbl">Lv</div><div class="val" id="levelDisp">1</div></div>
+  <div class="stat-box"><div class="lbl">ライン</div><div class="val" id="linesDisp">0</div></div>
+  <div id="chainDisp"></div>
+  <button class="restart" id="restartBtn" onclick="startGame()">再スタート</button>
 </div>
+<canvas id="game"></canvas>
 <div class="controls" id="kbControls">
   ←→: 移動　↓: ソフトドロップ　↑/X: 右回転　Z: 左回転　Space: ハードドロップ　P: ポーズ
 </div>
@@ -179,16 +167,13 @@ function computeLayout() {
   const screenH = window.innerHeight;
   isMobileLayout = screenW <= MOBILE_BREAKPOINT;
 
-  // 右サイドバー幅 (CSS と合わせる)
-  const SIDEBAR_W = isMobileLayout ? 86 : 110;
-  const GAP = 8;   // sidebar との gap
-  const HPAD = 5;  // body 左右パディング
-  const H1_H = 0;  // h1 削除済み
+  const TOP_BAR_H = 46; // CSSの height:46px に合わせる
+  const HPAD = 5;       // body 左右パディング
+  const VPAD = 5;       // body 上パディング
   const TOUCH_H = isMobileLayout ? 150 : 0; // タッチコントロール確保
-  const VPAD = 5;  // body 上パディング
 
-  const availW = screenW - SIDEBAR_W - GAP - HPAD * 2;
-  const availH = screenH - H1_H - VPAD - TOUCH_H;
+  const availW = screenW - HPAD * 2;
+  const availH = screenH - TOP_BAR_H - VPAD - TOUCH_H;
 
   const cellFromW = Math.floor((availW - 20) / COLS); // 20 = BOARD_X(10) + 右余白(10)
   const cellFromH = Math.floor((availH - 20) / ROWS);
@@ -453,7 +438,7 @@ function drawSidebarNext() {
   nextCtx.fillStyle = '#16213e';
   nextCtx.fillRect(0, 0, nw, nh);
 
-  const sz = 14;
+  const sz = Math.floor(Math.min(nw, nh) / 4);
   const shape = SHAPES[nextType][0];
   const color = COLORS[PIECE_COLORS[nextType]];
   const drs = shape.map(([dr]) => dr);
