@@ -210,68 +210,42 @@ function computeLayout() {
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
-  // Step1: 凹型の基本形状
-  //   両端: 25〜30行、中央: 10〜15行
-  //   exponent=0.8 で中央〜端が均一な傾斜（見本に近い）
+  // Step1: 滑らかな放物線で基本高さを計算
+  //   col 0（左端）: 28段、col 9.5（中央）: 12段、col 19（右端）: 28段
   const center = (COLS - 1) / 2; // 9.5
-  const minH = 12; // 中央の高さ（行数）
-  const maxH = 28; // 端の高さ（行数）
+  const centerH = 12;
+  const edgeH = 28;
+
+  const baseH = [];
   for (let c = 0; c < COLS; c++) {
-    const ratio = Math.abs(c - center) / center;
-    const base = Math.round(minH + (maxH - minH) * Math.pow(ratio, 0.8));
-    const noise = Math.round(Math.random() * 6 - 3); // ±3 ランダム揺らぎ
-    const h = Math.max(minH - 2, Math.min(maxH + 2, base + noise));
-    const startRow = ROWS - h;
+    const t = (c - center) / center; // -1 〜 +1
+    baseH.push(Math.round(centerH + (edgeH - centerH) * t * t));
+  }
+
+  // Step2: 各列に ±1 の揺らぎを追加（形は維持しつつ少しガタガタに）
+  const colH = baseH.map(h =>
+    Math.max(centerH - 1, Math.min(edgeH + 1, h + Math.round(Math.random() * 2 - 1)))
+  );
+
+  // 高さに従ってボードを埋める
+  for (let c = 0; c < COLS; c++) {
+    const startRow = ROWS - colH[c];
     for (let r = Math.max(0, startRow); r < ROWS; r++) {
       board[r][c] = 8;
     }
   }
 
-  // Step2: 壁の内側に直方体状の出っ張りを配置（見本のようなブロック感）
-  const numBumps = 12 + Math.floor(Math.random() * 6); // 12〜17個
-  for (let i = 0; i < numBumps; i++) {
-    const r0 = 6 + Math.floor(Math.random() * (ROWS - 14));
-    // この行の左・右壁の内側エッジを検出
-    let leftEdge = -1;
-    for (let c = 0; c < COLS; c++) {
-      if (board[r0][c] === 0) { leftEdge = c - 1; break; }
+  // Step3: 基本高さより 5〜10段下に 1マスの蛇行する空きを作る
+  //   隣の列と ±1 マスの範囲で上下させることで蛇行を表現
+  let depth = 5 + Math.floor(Math.random() * 6); // 初期深さ 5〜10
+  for (let c = 0; c < COLS; c++) {
+    const surface = ROWS - colH[c]; // 壁の天辺の行インデックス
+    const gapRow = surface + depth;  // 空けるセルの行インデックス
+    if (gapRow >= 0 && gapRow < ROWS) {
+      board[gapRow][c] = 0;
     }
-    let rightEdge = COLS;
-    for (let c = COLS - 1; c >= 0; c--) {
-      if (board[r0][c] === 0) { rightEdge = c + 1; break; }
-    }
-    if (leftEdge < 0 || rightEdge >= COLS) continue;
-    const openW = rightEdge - leftEdge - 1;
-    if (openW < 5) continue;
-
-    const bumpW = 2 + Math.floor(Math.random() * 3); // 幅 2〜4列
-    const bumpH = 3 + Math.floor(Math.random() * 5); // 高さ 3〜7行
-    if (bumpW > Math.floor(openW / 3)) continue; // 開口幅の1/3以内
-
-    if (Math.random() < 0.5) {
-      // 左壁から右へ突出
-      for (let dr = 0; dr < bumpH && r0 + dr < ROWS - 1; dr++) {
-        for (let dc = 1; dc <= bumpW; dc++) {
-          if (leftEdge + dc < rightEdge - 1) board[r0 + dr][leftEdge + dc] = 8;
-        }
-      }
-    } else {
-      // 右壁から左へ突出
-      for (let dr = 0; dr < bumpH && r0 + dr < ROWS - 1; dr++) {
-        for (let dc = 1; dc <= bumpW; dc++) {
-          if (rightEdge - dc > leftEdge + 1) board[r0 + dr][rightEdge - dc] = 8;
-        }
-      }
-    }
-  }
-
-  // Step3: 完全に埋まった行（底部）に1マスの蛇行穴を開ける
-  let holeCenter = Math.floor(COLS / 2);
-  for (let r = 0; r < ROWS; r++) {
-    if (!board[r].every(v => v !== 0)) continue;
-    holeCenter = Math.max(2, Math.min(COLS - 3,
-      holeCenter + Math.round(Math.random() * 2 - 1)));
-    board[r][holeCenter] = 0;
+    // 次の列で ±1 の範囲で深さを変える（蛇行）
+    depth = Math.max(5, Math.min(10, depth + Math.round(Math.random() * 2 - 1)));
   }
 }
 
