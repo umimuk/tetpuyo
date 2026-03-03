@@ -209,7 +209,7 @@ function computeLayout() {
 function initBoard() {
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 
-  // Step1: 放物線で基本高さを計算し ±2〜3 の段差を追加
+  // Step1: 放物線で各列の高さを計算（揺らぎなし・滑らかなU字曲線）
   //   col 0, 19: 35段  col 9-10（中央）: 25段
   const center = (COLS - 1) / 2; // 9.5
   const centerH = 25;
@@ -217,10 +217,8 @@ function initBoard() {
 
   const colH = [];
   for (let c = 0; c < COLS; c++) {
-    const t    = (c - center) / center;              // -1 〜 +1
-    const base = Math.round(centerH + (edgeH - centerH) * t * t);
-    const noise = Math.floor(Math.random() * 7) - 3; // -3 〜 +3
-    const h    = Math.max(centerH - 3, Math.min(edgeH + 3, base + noise));
+    const t = (c - center) / center; // -1 〜 +1
+    const h = Math.round(centerH + (edgeH - centerH) * t * t);
     colH.push(h);
     const startRow = ROWS - h;
     for (let r = Math.max(0, startRow); r < ROWS; r++) {
