@@ -8,10 +8,9 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     display: flex; flex-direction: column; align-items: center;
-    background: #1a1a2e; font-family: sans-serif; color: #fff;
+    background: #425097; font-family: sans-serif; color: #fff;
     padding: 8px; user-select: none;
   }
-  h1 { margin-bottom: 6px; font-size: 22px; letter-spacing: 2px; }
 
   /* ゲームラッパー: 盤面(左) + サイドバー(右) */
   .game-wrapper {
@@ -22,7 +21,7 @@
   /* 右サイドバー */
   .sidebar {
     display: flex; flex-direction: column; gap: 6px; align-items: center;
-    background: #16213e; border-radius: 8px; padding: 8px 6px;
+    background: #425097; border-radius: 8px; padding: 8px 6px;
     width: 110px; flex-shrink: 0;
   }
   .next-box { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -62,7 +61,7 @@
 
     #touchControls {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(26,26,46,0.96); border-top: 1px solid #333;
+      background: #425097; border-top: 1px solid #333;
       padding: 8px 0 12px; z-index: 100;
     }
     body { padding-bottom: 150px; min-height: 0; overflow: hidden; }
@@ -71,7 +70,6 @@
 </style>
 </head>
 <body>
-<h1>TetPuyo</h1>
 <div class="game-wrapper">
   <canvas id="game"></canvas>
   <aside class="sidebar">
@@ -477,7 +475,7 @@ function render() {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   // Board background
-  ctx.fillStyle = '#16213e';
+  ctx.fillStyle = '#222a4f';
   ctx.fillRect(BOARD_X, BOARD_Y, COLS * CELL, ROWS * CELL);
 
   // Grid lines
