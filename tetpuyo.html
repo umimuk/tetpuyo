@@ -226,14 +226,13 @@ function initBoard() {
     }
   }
 
-  // Step2: 中央から下へ蛇行する2マス幅の滑らかな隙間
-  //   4〜8行ごとに方向を変え、滑らかなチャンネルを作る（col 4〜15 内に収める）
+  // Step2: 中央から下へ蛇行する2マス幅の隙間（セグメント + L字ターン方式）
+  //   6〜9行の直線を ±2〜3マスのL字ターンでつなぐ（col 4〜15 内に収める）
   const midCol = Math.round(center); // col 10
   const gapStartRow = ROWS - colH[midCol];
 
-  let gapLeft   = midCol - 1; // 2マス幅、左端の列（col 9 から開始）
-  let segDir    = 0;           // 現在の移動方向（-1, 0, +1）
-  let segRemain = 0;           // 現在セグメントの残り行数
+  let gapLeft   = midCol - 1;                         // col 9 から開始（2マス幅）
+  let segRemain = 6 + Math.floor(Math.random() * 4); // 初回セグメント長 6〜9行
 
   for (let r = gapStartRow; r < ROWS; r++) {
     board[r][gapLeft]     = 0;
@@ -241,11 +240,19 @@ function initBoard() {
 
     segRemain--;
     if (segRemain <= 0) {
-      const rand = Math.random();
-      segDir = rand < 0.33 ? -1 : rand < 0.66 ? 1 : 0;
-      segRemain = 4 + Math.floor(Math.random() * 5); // 4〜8行
+      // 新位置へ ±2〜3マス移動
+      const dir     = Math.random() < 0.5 ? -1 : 1;
+      const amount  = 2 + Math.floor(Math.random() * 2);       // 2 or 3
+      const newLeft = Math.max(4, Math.min(COLS - 6, gapLeft + dir * amount));
+
+      // この行にL字ターンの水平ブリッジを描く
+      const minC = Math.min(gapLeft, newLeft);
+      const maxC = Math.max(gapLeft + 1, newLeft + 1);
+      for (let c = minC; c <= maxC; c++) board[r][c] = 0;
+
+      gapLeft   = newLeft;
+      segRemain = 6 + Math.floor(Math.random() * 4); // 次のセグメント長 6〜9行
     }
-    gapLeft = Math.max(4, Math.min(COLS - 6, gapLeft + segDir)); // col 4〜14（隙間は 4〜15）
   }
 }
 
