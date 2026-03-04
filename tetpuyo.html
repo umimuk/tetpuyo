@@ -83,11 +83,43 @@
     height: auto;
     display: block;
   }
-  #titleScreen img#titleStartBtn {
+  #titleBottom {
     position: absolute;
-    bottom: 100px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  #difficultyBtns {
+    display: flex;
+    gap: 12px;
+  }
+  .diffBtn {
+    padding: clamp(8px, 2vw, 12px) clamp(18px, 4.5vw, 36px);
+    font-size: clamp(15px, 3.5vw, 22px);
+    font-weight: bold;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-radius: 10px;
+    background: rgba(7, 20, 72, 0.75);
+    color: rgba(255,255,255,0.65);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .diffBtn.selected {
+    border-color: #00e5ff;
+    background: rgba(0, 229, 255, 0.15);
+    color: #00e5ff;
+    box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+  }
+  .diffBtn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+  #titleScreen img#titleStartBtn {
     width: clamp(120px, 45vw, 360px);
     height: auto;
     cursor: pointer;
@@ -95,18 +127,25 @@
     transition: transform 0.1s, filter 0.1s;
   }
   #titleScreen img#titleStartBtn:hover {
-    transform: translateX(-50%) scale(1.05);
+    transform: scale(1.05);
     filter: brightness(1.1);
   }
   #titleScreen img#titleStartBtn:active {
-    transform: translateX(-50%) scale(0.97);
+    transform: scale(0.97);
   }
 </style>
 </head>
 <body>
 <div id="titleScreen">
   <img id="titleLogo" src="logo.png" alt="TetPuyo">
-  <img id="titleStartBtn" src="start-button.png" alt="スタート">
+  <div id="titleBottom">
+    <div id="difficultyBtns">
+      <button class="diffBtn selected" data-diff="easy">初級</button>
+      <button class="diffBtn" data-diff="normal">中級</button>
+      <button class="diffBtn" data-diff="hard">上級</button>
+    </div>
+    <img id="titleStartBtn" src="start-button.png" alt="スタート">
+  </div>
 </div>
 <div class="top-bar">
   <div class="next-box">
@@ -199,6 +238,8 @@ let dropTimer, dropInterval, lockDelay, lockResets, onGround;
 let particles = [];
 let fallingRowsAnim = null;
 let lastTime;
+let difficulty = 'easy';
+let riseInterval = null;
 
 // DAS state
 let dasKeys = {};
@@ -322,6 +363,7 @@ function spawnPiece() {
   if (collides(type, rot, row, col)) {
     if (collides(type, rot, 0, col)) {
       gameState = 'gameover';
+      stopRiseInterval();
       return;
     }
     currentPiece = { type, rot, row: 0, col };
@@ -805,6 +847,43 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+// === DIFFICULTY / RISE ===
+function generateRiseRow() {
+  const row = [];
+  for (let c = 0; c < COLS; c++) {
+    row.push(Math.random() < 0.7 ? (1 + Math.floor(Math.random() * 7)) : 0);
+  }
+  let gaps = row.filter(v => v === 0).length;
+  while (gaps < 3) {
+    const c = Math.floor(Math.random() * COLS);
+    if (row[c]) { row[c] = 0; gaps++; }
+  }
+  return row;
+}
+
+function riseBoard() {
+  if (gameState !== 'playing') return;
+  for (let r = 0; r < ROWS - 1; r++) board[r] = [...board[r + 1]];
+  board[ROWS - 1] = generateRiseRow();
+  if (board[0].some(v => v !== 0)) { gameState = 'gameover'; stopRiseInterval(); return; }
+  if (currentPiece && collides(currentPiece.type, currentPiece.rot, currentPiece.row, currentPiece.col)) {
+    currentPiece.row--;
+    if (currentPiece.row < -2 || collides(currentPiece.type, currentPiece.rot, currentPiece.row, currentPiece.col)) {
+      gameState = 'gameover'; stopRiseInterval();
+    }
+  }
+}
+
+function startRiseInterval() {
+  stopRiseInterval();
+  const ms = difficulty === 'hard' ? 1000 : difficulty === 'normal' ? 3000 : 0;
+  if (ms > 0) riseInterval = setInterval(riseBoard, ms);
+}
+
+function stopRiseInterval() {
+  if (riseInterval) { clearInterval(riseInterval); riseInterval = null; }
+}
+
 // === START ===
 function startGame() {
   initBoard();
@@ -823,6 +902,7 @@ function startGame() {
   onGround = false;
   dasKeys = {};
   gameState = 'playing';
+  startRiseInterval();
   document.getElementById('chainDisp').textContent = '';
   updateUI();
   spawnPiece();
@@ -837,6 +917,14 @@ let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(computeLayout, 100);
+});
+
+document.querySelectorAll('.diffBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diffBtn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    difficulty = btn.dataset.diff;
+  });
 });
 
 document.getElementById('titleStartBtn').addEventListener('click', () => {
