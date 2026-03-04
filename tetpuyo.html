@@ -61,9 +61,42 @@
     body { padding-bottom: 150px; min-height: 0; overflow: hidden; }
     #kbControls { display: none; }
   }
+
+  /* ===== TITLE SCREEN ===== */
+  #titleScreen {
+    position: fixed; inset: 0;
+    background: #425097;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  #titleScreen img#titleLogo {
+    width: clamp(180px, 65vw, 500px);
+    height: auto;
+    margin-bottom: 10vw;
+    display: block;
+  }
+  #titleScreen img#titleStartBtn {
+    width: clamp(120px, 45vw, 360px);
+    height: auto;
+    cursor: pointer;
+    display: block;
+    transition: transform 0.1s, filter 0.1s;
+  }
+  #titleScreen img#titleStartBtn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+  #titleScreen img#titleStartBtn:active {
+    transform: scale(0.97);
+  }
 </style>
 </head>
 <body>
+<div id="titleScreen">
+  <img id="titleLogo" src="logo.png" alt="TetPuyo">
+  <img id="titleStartBtn" src="start-button.png" alt="スタート">
+</div>
 <div class="top-bar">
   <div class="next-box">
     <canvas id="nextCanvas" width="40" height="40"></canvas>
@@ -460,6 +493,7 @@ function drawSidebarNext() {
 }
 
 function render() {
+  if (gameState === 'title') return;
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   // Board background
@@ -691,6 +725,7 @@ function startGame() {
 }
 
 // === INIT ===
+gameState = 'title';
 computeLayout();
 setupTouchControls();
 let resizeTimer;
@@ -698,7 +733,17 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(computeLayout, 100);
 });
-startGame();
+
+document.getElementById('titleStartBtn').addEventListener('click', () => {
+  document.getElementById('titleScreen').style.display = 'none';
+  startGame();
+});
+document.getElementById('titleStartBtn').addEventListener('touchend', (e) => {
+  e.preventDefault();
+  document.getElementById('titleScreen').style.display = 'none';
+  startGame();
+}, { passive: false });
+
 requestAnimationFrame(gameLoop);
 </script>
 </body>
