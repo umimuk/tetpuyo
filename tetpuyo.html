@@ -60,13 +60,18 @@
     }
     body { padding-bottom: 150px; min-height: 0; overflow: hidden; }
     #kbControls { display: none; }
+    #titleScreen {
+      background:
+        url('background.png') no-repeat center bottom / 50%,
+        #071448;
+    }
   }
 
   /* ===== TITLE SCREEN ===== */
   #titleScreen {
     position: fixed; inset: 0;
     background:
-      url('background.png') no-repeat center bottom / auto,
+      url('background.png') no-repeat center bottom / 95%,
       #071448;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
