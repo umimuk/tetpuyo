@@ -435,27 +435,20 @@ function enterClearPhase() {
   chainReactionStep();
 }
 
-function spawnClearParticles(fullRows) {
-  const midCol = COLS / 2;
-  for (const r of fullRows) {
-    for (let c = 0; c < COLS; c++) {
-      const colorIdx = board[r][c];
-      if (!colorIdx) continue;
-      const bx = BOARD_X + c * CELL + CELL / 2;
-      const by = BOARD_Y + r * CELL + CELL / 2;
-      const dir = c < midCol ? -1 : 1;
-      for (let i = 0; i < 3; i++) {
-        particles.push({
-          x: bx, y: by,
-          vx: dir * (2.5 + Math.random() * 3.5),
-          vy: -2 + Math.random() * 1.5,
-          color: COLORS[colorIdx],
-          alpha: 1.0,
-          size: CELL * (0.25 + Math.random() * 0.2),
-          decay: 0.018 + Math.random() * 0.012,
-        });
-      }
-    }
+function spawnBlockParticles(r, c, colorIdx) {
+  const bx = BOARD_X + c * CELL + CELL / 2;
+  const by = BOARD_Y + r * CELL + CELL / 2;
+  const dir = c < COLS / 2 ? -1 : 1;
+  for (let i = 0; i < 6; i++) {
+    particles.push({
+      x: bx, y: by,
+      vx: dir * (2.5 + Math.random() * 3.5),
+      vy: -2 + Math.random() * 1.5,
+      color: COLORS[colorIdx],
+      alpha: 1.0,
+      size: CELL * (0.4 + Math.random() * 0.3),
+      decay: 0.018 + Math.random() * 0.012,
+    });
   }
 }
 
@@ -504,11 +497,21 @@ function chainReactionStep() {
   if (chainCount > 1) {
     document.getElementById('chainDisp').textContent = chainCount + '連鎖!';
   }
-  spawnClearParticles(fullRows);
-  for (const r of fullRows) {
-    for (let c = 0; c < COLS; c++) board[r][c] = 0;
-  }
-  setTimeout(beginFallingAnimation, 350);
+  const colGroups = [[0,4],[4,8],[8,12],[12,16],[16,20]];
+  const waveDelay = 50;
+  colGroups.forEach(([start, end], idx) => {
+    setTimeout(() => {
+      for (const r of fullRows) {
+        for (let c = start; c < end; c++) {
+          if (board[r][c] !== 0) {
+            spawnBlockParticles(r, c, board[r][c]);
+            board[r][c] = 0;
+          }
+        }
+      }
+    }, idx * waveDelay);
+  });
+  setTimeout(beginFallingAnimation, (colGroups.length - 1) * waveDelay + 250);
 }
 
 // === SCORING & UI ===
