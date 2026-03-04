@@ -782,18 +782,12 @@ function setupSwipeControls() {
   let touchCurrentX = 0;
   let longPressTimer = null;
   let continuousMode = false;
-  let moveInterval = null;
-
-  const getDir = (x) => {
-    const dx = x - startX;
-    if (dx < -20) return 'left';
-    if (dx >  20) return 'right';
-    return null;
-  };
+  let refX = 0;          // 連続移動の基準X（1マス移動のたびにリセット）
+  let lastMoveTime = 0;  // 最後に移動した時刻
+  const MOVE_PX  = 50;   // 1マス移動に必要な指の移動量(px)
+  const MOVE_MS  = 160;  // 連続移動の最短間隔(ms)
 
   const stopContinuous = () => {
-    clearInterval(moveInterval);
-    moveInterval = null;
     continuousMode = false;
   };
 
@@ -808,19 +802,26 @@ function setupSwipeControls() {
     longPressTimer = setTimeout(() => {
       longPressTimer = null;
       continuousMode = true;
-      // 連続移動モード開始：即座に1回 + 120msごとに繰り返し
-      const dir = getDir(touchCurrentX);
-      if (dir && gameState === 'playing') handleAction(dir);
-      moveInterval = setInterval(() => {
-        const d = getDir(touchCurrentX);
-        if (d && gameState === 'playing') handleAction(d);
-      }, 120);
+      refX = touchCurrentX; // 長押し確定時点の指位置を基準にする
+      lastMoveTime = 0;
     }, 300);
   }, { passive: false });
 
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     touchCurrentX = e.touches[0].clientX;
+
+    if (!continuousMode || gameState !== 'playing') return;
+
+    const dx = touchCurrentX - refX;
+    if (Math.abs(dx) < MOVE_PX) return;               // 閾値未満は無視
+
+    const now = performance.now();
+    if (now - lastMoveTime < MOVE_MS) return;          // 最短間隔チェック
+
+    handleAction(dx < 0 ? 'left' : 'right');
+    refX = touchCurrentX;  // 基準位置をリセット
+    lastMoveTime = now;
   }, { passive: false });
 
   canvas.addEventListener('touchend', (e) => {
