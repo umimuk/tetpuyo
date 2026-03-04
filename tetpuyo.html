@@ -37,29 +37,9 @@
   }
   button.restart:hover { background: #ff6b81; }
 
-  .controls { margin-top: 8px; font-size: 12px; color: #888; text-align: center; line-height: 1.6; }
-
-  /* Touch controls */
-  .touch-controls { display: none; width: 100%; }
-  .touch-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
-  .touch-btn {
-    width: 58px; height: 58px; font-size: 22px; border: 1px solid #444;
-    border-radius: 10px; background: #16213e; color: #fff; cursor: pointer;
-    touch-action: manipulation;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .touch-btn:active { background: #0f3460; }
-  .touch-wide { width: 192px; font-size: 16px; }
-
   /* ===== MOBILE ===== */
   @media (max-width: 768px) {
-    #touchControls {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: #425097; border-top: 1px solid #333;
-      padding: 8px 0 12px; z-index: 100;
-    }
-    body { padding-bottom: 150px; min-height: 0; overflow: hidden; }
-    #kbControls { display: none; }
+    body { min-height: 0; overflow: hidden; }
     #titleScreen {
       background:
         url('background.png') no-repeat center bottom / 50%,
@@ -158,20 +138,6 @@
   <button class="restart" id="restartBtn" onclick="startGame()">再スタート</button>
 </div>
 <canvas id="game"></canvas>
-<div class="controls" id="kbControls">
-  ←→: 移動　↓: ソフトドロップ　↑/X: 右回転　Z: 左回転　Space: ハードドロップ　P: ポーズ
-</div>
-<div class="touch-controls" id="touchControls">
-  <div class="touch-row">
-    <button class="touch-btn" id="btnLeft">◀</button>
-    <button class="touch-btn" id="btnDown">▼</button>
-    <button class="touch-btn" id="btnRight">▶</button>
-    <button class="touch-btn" id="btnCW">↻</button>
-  </div>
-  <div class="touch-row">
-    <button class="touch-btn touch-wide" id="btnDrop">⬇ Hard Drop</button>
-  </div>
-</div>
 <script>
 // === CONSTANTS ===
 const COLS = 20;
@@ -259,13 +225,12 @@ function computeLayout() {
   const screenH = window.innerHeight;
   isMobileLayout = screenW <= MOBILE_BREAKPOINT;
 
-  const TOP_BAR_H = 46; // CSSの height:46px に合わせる
-  const HPAD = 5;       // body 左右パディング
-  const VPAD = 15;      // body 上パディング
-  const TOUCH_H = isMobileLayout ? 150 : 0; // タッチコントロール確保
+  const TOP_BAR_H = 46;
+  const HPAD = 5;
+  const VPAD = 15;
 
   const availW = screenW - HPAD * 2;
-  const availH = screenH - TOP_BAR_H - VPAD - TOUCH_H;
+  const availH = screenH - TOP_BAR_H - VPAD;
 
   const cellFromW = Math.floor((availW - 20) / COLS); // 20 = BOARD_X(10) + 右余白(10)
   const cellFromH = Math.floor((availH - 20) / ROWS);
@@ -781,40 +746,45 @@ function processDAS(now) {
   }
 }
 
-// === TOUCH CONTROLS ===
-function setupTouchControls() {
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (isTouchDevice) {
-    document.getElementById('touchControls').style.display = 'block';
-    document.getElementById('kbControls').style.display = 'none';
-  }
+// === TOUCH / SWIPE CONTROLS ===
+function setupSwipeControls() {
+  let startX, startY, startTime;
 
-  const btns = [
-    { id: 'btnLeft',  action: 'left',      repeat: true  },
-    { id: 'btnRight', action: 'right',     repeat: true  },
-    { id: 'btnDown',  action: 'down',      repeat: true  },
-    { id: 'btnCW',    action: 'rotateCW',  repeat: false },
-    { id: 'btnDrop',  action: 'hardDrop',  repeat: false },
-  ];
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startTime = performance.now();
+  }, { passive: false });
 
-  for (const btn of btns) {
-    const el = document.getElementById(btn.id);
-    const dasKey = 'touch_' + btn.action;
-    el.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      handleAction(btn.action);
-      if (btn.repeat) {
-        dasKeys[dasKey] = { action: btn.action, time: performance.now(), phase: 'delay' };
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (startX === undefined) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const dt = performance.now() - startTime;
+    const dist = Math.hypot(dx, dy);
+
+    if (dt < 100 && dist < 10) {
+      // タップ → 回転
+      handleAction('rotateCW');
+    } else if (dist >= 30) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // 左右スワイプ
+        handleAction(dx < 0 ? 'left' : 'right');
+      } else if (dy > 0) {
+        // 下スワイプ → ハードドロップ
+        handleAction('hardDrop');
       }
-    }, { passive: false });
-    el.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      delete dasKeys[dasKey];
-    }, { passive: false });
-    el.addEventListener('touchcancel', () => {
-      delete dasKeys[dasKey];
-    });
-  }
+    }
+    startX = startY = undefined;
+  }, { passive: false });
+
+  canvas.addEventListener('touchcancel', () => {
+    startX = startY = undefined;
+  });
 }
 
 // === GAME LOOP ===
@@ -937,7 +907,7 @@ function startGame() {
 // === INIT ===
 gameState = 'title';
 computeLayout();
-setupTouchControls();
+setupSwipeControls();
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
