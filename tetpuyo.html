@@ -67,16 +67,20 @@
     position: fixed; inset: 0;
     background: linear-gradient(180deg, #2a2f6e 0%, #1a1a3e 60%, #0d0d22 100%);
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    align-items: center; justify-content: flex-start;
+    padding-top: 20vw;
     z-index: 200;
   }
   #titleScreen img#titleLogo {
     width: clamp(180px, 65vw, 500px);
     height: auto;
-    margin-bottom: 20vw;
     display: block;
   }
   #titleScreen img#titleStartBtn {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
     width: clamp(120px, 45vw, 360px);
     height: auto;
     cursor: pointer;
@@ -84,11 +88,11 @@
     transition: transform 0.1s, filter 0.1s;
   }
   #titleScreen img#titleStartBtn:hover {
-    transform: scale(1.05);
+    transform: translateX(-50%) scale(1.05);
     filter: brightness(1.1);
   }
   #titleScreen img#titleStartBtn:active {
-    transform: scale(0.97);
+    transform: translateX(-50%) scale(0.97);
   }
 </style>
 </head>
