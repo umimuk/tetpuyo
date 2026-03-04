@@ -65,7 +65,9 @@
   /* ===== TITLE SCREEN ===== */
   #titleScreen {
     position: fixed; inset: 0;
-    background: linear-gradient(180deg, #2a2f6e 0%, #1a1a3e 60%, #0d0d22 100%);
+    background:
+      url('background.png') no-repeat 50% calc(100% - 100px - clamp(60px, 22.5vw, 180px)) / auto,
+      linear-gradient(180deg, #2a2f6e 0%, #1a1a3e 60%, #0d0d22 100%);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     padding-bottom: calc(clamp(120px, 45vw, 360px) + 120px);
