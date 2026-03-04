@@ -461,6 +461,34 @@ function spawnBlockParticles(r, c, colorIdx) {
   }
 }
 
+function applyColumnGravity() {
+  let anyChanged = false;
+  for (let c = 0; c < COLS; c++) {
+    let segStart = 0, inSeg = false;
+    const settle = (start, end) => {
+      const pieces = [];
+      for (let r = start; r <= end; r++) {
+        if (board[r][c] !== 0) pieces.push({ row: r, color: board[r][c] });
+      }
+      if (pieces.length === 0) return;
+      for (let r = start; r <= end; r++) board[r][c] = 0;
+      const base = end - pieces.length + 1;
+      for (let i = 0; i < pieces.length; i++) {
+        if (pieces[i].row !== base + i) anyChanged = true;
+        board[base + i][c] = pieces[i].color;
+      }
+    };
+    for (let r = 0; r <= ROWS; r++) {
+      if (r === ROWS || board[r][c] === 8) {
+        if (inSeg) { settle(segStart, r - 1); inSeg = false; }
+      } else {
+        if (!inSeg) { segStart = r; inSeg = true; }
+      }
+    }
+  }
+  return anyChanged;
+}
+
 function beginFallingAnimation() {
   const nonEmptyRowIndices = [];
   for (let r = 0; r < ROWS; r++) {
@@ -480,6 +508,7 @@ function beginFallingAnimation() {
     .filter(fa => fa.fromY !== fa.toY);
 
   collapseBoard();
+  applyColumnGravity();
 
   if (anim.length === 0) {
     setTimeout(chainReactionStep, 50);
@@ -677,6 +706,7 @@ function render() {
     }
     if (fallingRowsAnim.every(fa => fa.currentY >= fa.toY)) {
       fallingRowsAnim = null;
+      applyColumnGravity();
       setTimeout(chainReactionStep, 50);
     }
   }
