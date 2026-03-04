@@ -9,7 +9,7 @@
   body {
     display: flex; flex-direction: column; align-items: center;
     background: #425097; font-family: sans-serif; color: #fff;
-    padding: 5px 5px 0; user-select: none;
+    padding: 15px 5px 0; user-select: none;
   }
 
   /* 上部バー */
@@ -172,7 +172,7 @@ function computeLayout() {
 
   const TOP_BAR_H = 46; // CSSの height:46px に合わせる
   const HPAD = 5;       // body 左右パディング
-  const VPAD = 5;       // body 上パディング
+  const VPAD = 15;      // body 上パディング
   const TOUCH_H = isMobileLayout ? 150 : 0; // タッチコントロール確保
 
   const availW = screenW - HPAD * 2;
