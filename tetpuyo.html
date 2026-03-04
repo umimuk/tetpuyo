@@ -240,6 +240,8 @@ let fallingRowsAnim = null;
 let lastTime;
 let difficulty = 'easy';
 let riseInterval = null;
+let riseGapCol = null;
+let riseSegRemain = 0;
 
 // DAS state
 let dasKeys = {};
@@ -849,15 +851,36 @@ function gameLoop(timestamp) {
 
 // === DIFFICULTY / RISE ===
 function generateRiseRow() {
-  const row = [];
-  for (let c = 0; c < COLS; c++) {
-    row.push(Math.random() < 0.7 ? (1 + Math.floor(Math.random() * 7)) : 0);
+  if (riseGapCol === null) {
+    const center = Math.round((COLS - 1) / 2);
+    let detected = center;
+    let minDist = COLS;
+    for (let c = 0; c < COLS; c++) {
+      if (board[ROWS - 2][c] === 0) {
+        const dist = Math.abs(c - center);
+        if (dist < minDist) { minDist = dist; detected = c; }
+      }
+    }
+    riseGapCol = detected;
+    riseSegRemain = 6 + Math.floor(Math.random() * 4);
   }
-  let gaps = row.filter(v => v === 0).length;
-  while (gaps < 3) {
-    const c = Math.floor(Math.random() * COLS);
-    if (row[c]) { row[c] = 0; gaps++; }
+
+  const row = Array(COLS).fill(8);
+
+  if (riseSegRemain <= 0) {
+    const dir    = Math.random() < 0.5 ? -1 : 1;
+    const amount = 2 + Math.floor(Math.random() * 2);
+    const newCol = Math.max(4, Math.min(COLS - 5, riseGapCol + dir * amount));
+    const minC = Math.min(riseGapCol, newCol);
+    const maxC = Math.max(riseGapCol, newCol);
+    for (let c = minC; c <= maxC; c++) row[c] = 0;
+    riseGapCol = newCol;
+    riseSegRemain = 6 + Math.floor(Math.random() * 4);
+  } else {
+    row[riseGapCol] = 0;
+    riseSegRemain--;
   }
+
   return row;
 }
 
@@ -895,6 +918,8 @@ function startGame() {
   chainCount = 0;
   particles = [];
   fallingRowsAnim = null;
+  riseGapCol = null;
+  riseSegRemain = 0;
   dropTimer = 0;
   dropInterval = 1000;
   lockDelay = 0;
