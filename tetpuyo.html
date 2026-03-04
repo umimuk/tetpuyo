@@ -197,6 +197,7 @@ let score, level, totalLines, chainCount;
 let gameState;
 let dropTimer, dropInterval, lockDelay, lockResets, onGround;
 let particles = [];
+let fallingRowsAnim = null;
 let lastTime;
 
 // DAS state
@@ -446,16 +447,43 @@ function spawnClearParticles(fullRows) {
       for (let i = 0; i < 3; i++) {
         particles.push({
           x: bx, y: by,
-          vx: dir * (1.5 + Math.random() * 3),
-          vy: -1 + Math.random() * 2,
+          vx: dir * (2.5 + Math.random() * 3.5),
+          vy: -2 + Math.random() * 1.5,
           color: COLORS[colorIdx],
           alpha: 1.0,
           size: CELL * (0.25 + Math.random() * 0.2),
-          decay: 0.045 + Math.random() * 0.025,
+          decay: 0.018 + Math.random() * 0.012,
         });
       }
     }
   }
+}
+
+function beginFallingAnimation() {
+  const nonEmptyRowIndices = [];
+  for (let r = 0; r < ROWS; r++) {
+    if (board[r].some(v => v !== 0)) nonEmptyRowIndices.push(r);
+  }
+  const targetStart = ROWS - nonEmptyRowIndices.length;
+
+  const anim = nonEmptyRowIndices
+    .map((fromRow, i) => ({
+      rowData: [...board[fromRow]],
+      fromY:    BOARD_Y + fromRow * CELL,
+      toY:      BOARD_Y + (targetStart + i) * CELL,
+      currentY: BOARD_Y + fromRow * CELL,
+      vy: 0,
+      targetRow: targetStart + i,
+    }))
+    .filter(fa => fa.fromY !== fa.toY);
+
+  collapseBoard();
+
+  if (anim.length === 0) {
+    setTimeout(chainReactionStep, 50);
+    return;
+  }
+  fallingRowsAnim = anim;
 }
 
 function chainReactionStep() {
@@ -480,8 +508,7 @@ function chainReactionStep() {
   for (const r of fullRows) {
     for (let c = 0; c < COLS; c++) board[r][c] = 0;
   }
-  collapseBoard();
-  setTimeout(chainReactionStep, 300);
+  setTimeout(beginFallingAnimation, 350);
 }
 
 // === SCORING & UI ===
@@ -554,9 +581,12 @@ function render() {
   }
 
   // Committed blocks
+  const animRows = fallingRowsAnim
+    ? new Set(fallingRowsAnim.map(f => f.targetRow))
+    : new Set();
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (board[r][c] !== 0) {
+      if (board[r][c] !== 0 && !animRows.has(r)) {
         drawBlock(BOARD_X + c * CELL, BOARD_Y + r * CELL, COLORS[board[r][c]]);
       }
     }
@@ -611,8 +641,8 @@ function render() {
     const p = particles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.4;
-    p.vx *= 0.95;
+    p.vy += 0.25;
+    p.vx *= 0.97;
     p.alpha -= p.decay;
     if (p.alpha <= 0) { particles.splice(i, 1); continue; }
     ctx.save();
@@ -620,6 +650,23 @@ function render() {
     ctx.fillStyle = p.color;
     ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
     ctx.restore();
+  }
+
+  // Falling rows animation
+  if (fallingRowsAnim) {
+    for (const fa of fallingRowsAnim) {
+      fa.vy += 1.5;
+      fa.currentY = Math.min(fa.currentY + fa.vy, fa.toY);
+      for (let c = 0; c < COLS; c++) {
+        if (fa.rowData[c] !== 0) {
+          drawBlock(BOARD_X + c * CELL, fa.currentY, COLORS[fa.rowData[c]]);
+        }
+      }
+    }
+    if (fallingRowsAnim.every(fa => fa.currentY >= fa.toY)) {
+      fallingRowsAnim = null;
+      setTimeout(chainReactionStep, 50);
+    }
   }
 
   drawSidebarNext();
@@ -765,6 +812,7 @@ function startGame() {
   totalLines = 0;
   chainCount = 0;
   particles = [];
+  fallingRowsAnim = null;
   dropTimer = 0;
   dropInterval = 1000;
   lockDelay = 0;
