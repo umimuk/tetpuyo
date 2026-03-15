@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お問い合わせ - TetPuyo</title>
+<meta name="description" content="TetPuyoへのお問い合わせページです。">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: #1a1a2e;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+    color: #e0e0e0;
+    line-height: 1.8;
+  }
+  header {
+    text-align: center;
+    padding: 30px 20px 10px;
+  }
+  header a {
+    color: #e94560;
+    text-decoration: none;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  header a:hover { color: #ff6b81; }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 30px 20px 60px;
+  }
+  h1 {
+    font-size: 26px;
+    color: #fff;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e94560;
+    padding-bottom: 10px;
+  }
+  p {
+    font-size: 15px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+  form {
+    background: #16213e;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-top: 20px;
+  }
+  label {
+    display: block;
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 6px;
+    margin-top: 18px;
+  }
+  label:first-child {
+    margin-top: 0;
+  }
+  input[type="text"],
+  input[type="email"],
+  textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    background: #0f3460;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus {
+    border-color: #e94560;
+  }
+  textarea {
+    height: 160px;
+    resize: vertical;
+  }
+  .submit-btn {
+    display: inline-block;
+    margin-top: 24px;
+    padding: 14px 48px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: #e94560;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 1px;
+  }
+  .submit-btn:hover { background: #ff6b81; transform: translateY(-2px); }
+  .submit-btn:active { transform: translateY(0); }
+  .note {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: #16213e;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #888;
+  }
+  footer {
+    text-align: center;
+    padding: 30px 20px;
+    border-top: 1px solid #2a2a4a;
+    font-size: 13px;
+    color: #666;
+  }
+  footer a {
+    color: #888;
+    text-decoration: none;
+    margin: 0 12px;
+  }
+  footer a:hover { color: #e94560; }
+  @media (max-width: 600px) {
+    h1 { font-size: 22px; }
+    form { padding: 20px 18px; }
+    .container { padding: 20px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <a href="index.html">TetPuyo</a>
+  </header>
+
+  <div class="container">
+    <h1>お問い合わせ</h1>
+    <p>TetPuyoに関するご質問・ご要望・不具合報告などがありましたら、以下のフォームからお気軽にお問い合わせください。</p>
+
+    <form action="https://formspree.io/f/your-form-id" method="POST">
+      <label for="name">お名前</label>
+      <input type="text" id="name" name="name" placeholder="山田 太郎" required>
+
+      <label for="email">メールアドレス</label>
+      <input type="email" id="email" name="email" placeholder="example@mail.com" required>
+
+      <label for="subject">件名</label>
+      <input type="text" id="subject" name="subject" placeholder="お問い合わせの件名" required>
+
+      <label for="message">お問い合わせ内容</label>
+      <textarea id="message" name="message" placeholder="お問い合わせ内容をご記入ください" required></textarea>
+
+      <button type="submit" class="submit-btn">送信する</button>
+    </form>
+
+    <div class="note">
+      <p style="margin-bottom: 0;">※ お問い合わせいただいた内容には、可能な限り迅速にご返信いたします。なお、内容によってはご返信できない場合がございますので、あらかじめご了承ください。</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      <a href="index.html">トップページ</a>
+      <a href="privacy.html">プライバシーポリシー</a>
+    </p>
+    <p style="margin-top: 10px;">&copy; 2026 TetPuyo. All rights reserved.</p>
+  </footer>
+</body>
+</html>

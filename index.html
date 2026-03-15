@@ -1,18 +1,185 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetpuyo Game</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TetPuyo - テトリス×ぷよぷよ風パズルゲーム</title>
+<meta name="description" content="テトリスとぷよぷよを組み合わせた無料パズルゲーム。ブラウザですぐ遊べます。">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: #1a1a2e;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+    color: #e0e0e0;
+    line-height: 1.8;
+  }
+  header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  header img {
+    max-width: 280px;
+    width: 80%;
+    height: auto;
+  }
+  header h1 {
+    font-size: 32px;
+    color: #fff;
+    letter-spacing: 3px;
+    margin-top: 16px;
+  }
+  header p.tagline {
+    color: #aaa;
+    font-size: 15px;
+    margin-top: 8px;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+  .play-btn-wrapper {
+    text-align: center;
+    margin: 36px 0;
+  }
+  .play-btn {
+    display: inline-block;
+    padding: 18px 60px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #fff;
+    background: #e94560;
+    border: none;
+    border-radius: 12px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 2px;
+  }
+  .play-btn:hover { background: #ff6b81; transform: translateY(-2px); }
+  .play-btn:active { transform: translateY(0); }
+  section {
+    background: #16213e;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  section h2 {
+    font-size: 20px;
+    color: #e94560;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #2a2a4a;
+    padding-bottom: 8px;
+  }
+  section p, section li {
+    font-size: 15px;
+    color: #ccc;
+  }
+  section ul {
+    padding-left: 20px;
+    margin-top: 8px;
+  }
+  section li {
+    margin-bottom: 6px;
+  }
+  .controls-table {
+    width: 100%;
+    margin-top: 12px;
+    border-collapse: collapse;
+  }
+  .controls-table th, .controls-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid #2a2a4a;
+    font-size: 14px;
+  }
+  .controls-table th {
+    color: #e94560;
+    width: 40%;
+  }
+  .controls-table td {
+    color: #ccc;
+  }
+  footer {
+    text-align: center;
+    padding: 30px 20px;
+    border-top: 1px solid #2a2a4a;
+    font-size: 13px;
+    color: #666;
+  }
+  footer a {
+    color: #888;
+    text-decoration: none;
+    margin: 0 12px;
+  }
+  footer a:hover { color: #e94560; }
+  @media (max-width: 600px) {
+    header h1 { font-size: 24px; }
+    section { padding: 20px 18px; }
+    .play-btn { padding: 14px 40px; font-size: 18px; }
+  }
+</style>
 </head>
 <body>
-    <div id="game">
-        <h1>Tetpuyo Game</h1>
-        <div id="tetris-board"></div>
-        <div id="score">Score: 0</div>
-        <button id="start-button">Start Game</button>
+  <header>
+    <img src="logo.png" alt="TetPuyo ロゴ">
+    <h1>TetPuyo</h1>
+    <p class="tagline">テトリス × ぷよぷよ風 無料パズルゲーム</p>
+  </header>
+
+  <div class="container">
+    <div class="play-btn-wrapper">
+      <a href="tetpuyo.html" class="play-btn">&#9654; ゲームで遊ぶ</a>
     </div>
-    <script src="script.js"></script>
+
+    <section>
+      <h2>TetPuyoとは？</h2>
+      <p>TetPuyoは、テトリスのブロック落下とぷよぷよの連鎖要素を組み合わせたブラウザパズルゲームです。インストール不要、スマホでもPCでもすぐに遊べます。</p>
+      <ul>
+        <li>テトリスのようにブロックを操作して積み上げる</li>
+        <li>同じ色が繋がると消える、ぷよぷよ風の連鎖システム</li>
+        <li>連鎖を繋げてハイスコアを目指そう</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>遊び方</h2>
+      <p>落ちてくるブロックを移動・回転させて、同じ色を4つ以上繋げて消しましょう。上まで積み上がるとゲームオーバーです。</p>
+
+      <h3 style="color:#fff; font-size:16px; margin-top:18px; margin-bottom:8px;">PC操作</h3>
+      <table class="controls-table">
+        <tr><th>← → キー</th><td>左右移動</td></tr>
+        <tr><th>↑ キー</th><td>回転</td></tr>
+        <tr><th>↓ キー</th><td>高速落下</td></tr>
+        <tr><th>スペースキー</th><td>一気に落下（ハードドロップ）</td></tr>
+      </table>
+
+      <h3 style="color:#fff; font-size:16px; margin-top:18px; margin-bottom:8px;">スマホ操作</h3>
+      <p>画面上のボタンで操作できます。</p>
+    </section>
+
+    <section>
+      <h2>特徴</h2>
+      <ul>
+        <li><strong>完全無料</strong> — 課金なし、広告のみで運営</li>
+        <li><strong>インストール不要</strong> — ブラウザで開くだけ</li>
+        <li><strong>スマホ対応</strong> — タッチ操作でも快適プレイ</li>
+        <li><strong>軽量</strong> — 通信量を気にせず遊べる</li>
+      </ul>
+    </section>
+
+    <div class="play-btn-wrapper">
+      <a href="tetpuyo.html" class="play-btn">&#9654; 今すぐ遊ぶ</a>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      <a href="privacy.html">プライバシーポリシー</a>
+      <a href="contact.html">お問い合わせ</a>
+    </p>
+    <p style="margin-top: 10px;">&copy; 2026 TetPuyo. All rights reserved.</p>
+  </footer>
 </body>
 </html>
